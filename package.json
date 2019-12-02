@@ -1,0 +1,63 @@
+{
+  "name": "friendship-blaster",
+  "version": "1.0.0-alpha.1",
+  "description": "simple docker-compose based deployments",
+  "main": "lib/index.js",
+  "author": "James Pike",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "build": "yarn build-code && yarn build-image",
+    "build-code": "tsc",
+    "build-image": "node ./lib/buildImage.js",
+    "lint": "eslint 'src/**/*.ts'",
+    "lint-fix": "eslint --fix 'src/**/*.ts'",
+    "jest": "jest --config=./jest.conf.json --verbose",
+    "test": "yarn build && yarn jest",
+    "test-dev": "yarn build-code && LOCAL_COMPOSE=true yarn jest",
+    "typecheck": "yarn build-code --noEmit",
+    "make-prettier": "prettier --write '**/*.{ts,json,md}'",
+    "validate-prettiness": "prettier -c '**/*.{ts,json,md}'"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "pretty-quick --staged"
+    }
+  },
+  "dependencies": {
+    "axios": "^0.19.0",
+    "axios-observable": "^1.1.2",
+    "debug": "^4.1.1",
+    "dockerode": "^3.0.2",
+    "lodash": "^4.17.15",
+    "rxjs": "^6.5.3",
+    "semver": "^6.3.0",
+    "yaml": "^1.7.2",
+    "yargs": "^15.0.1"
+  },
+  "bin": {
+    "friendship-blaster": "./bin/friendship-blaster"
+  },
+  "devDependencies": {
+    "@types/debug": "^4.1.5",
+    "@types/delay": "^3.1.0",
+    "@types/dockerode": "^2.5.20",
+    "@types/jest": "^24.0.23",
+    "@types/lodash": "^4.14.148",
+    "@types/rimraf": "^2.0.3",
+    "@types/semver": "^6.2.0",
+    "@types/yaml": "^1.2.0",
+    "@types/yargs": "^13.0.3",
+    "@typescript-eslint/eslint-plugin": "^2.3.0",
+    "@typescript-eslint/parser": "^2.3.0",
+    "delay": "^4.3.0",
+    "eslint": "^6.4.0",
+    "eslint-config-prettier": "^6.3.0",
+    "husky": "^3.1.0",
+    "jest": "^24.9.0",
+    "prettier": "^1.19.1",
+    "pretty-quick": "^2.0.1",
+    "rimraf": "^3.0.0",
+    "typescript": "^3.7.2"
+  }
+}

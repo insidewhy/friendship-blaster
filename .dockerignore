@@ -1,0 +1,9 @@
+lib
+node_modules
+bin
+**/*.spec.ts
+src/testUtils.ts
+src/buildImage.ts
+test
+readme.md
+jest.conf.json

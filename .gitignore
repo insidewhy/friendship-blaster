@@ -1,0 +1,6 @@
+/lib
+/node_modules
+/yarn-error.log
+/test/configs/*/mnt
+fblaster-docker-compose.yml
+fblaster-versions.yml

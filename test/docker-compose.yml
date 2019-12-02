@@ -1,0 +1,12 @@
+version: "3"
+services:
+  docker-compose:
+    image: registry:2
+    container_name: friendship-blaster-test-registry
+    ports:
+      - 5000:5000
+    environment:
+      - REGISTRY_HTTP_TLS_CERTIFICATE=/config/domain.crt
+      - REGISTRY_HTTP_TLS_KEY=/config/domain.key
+    volumes:
+      - ./registry-config:/config

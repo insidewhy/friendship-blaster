@@ -1,0 +1,26 @@
+---
+parser: "@typescript-eslint/parser"
+plugins:
+  - "@typescript-eslint"
+extends:
+  - "plugin:@typescript-eslint/recommended"
+  - eslint-config-prettier
+rules:
+  no-unused-vars:
+    - warn
+  no-use-before-define:
+    - warn
+  "@typescript-eslint/no-use-before-define":
+    - warn
+  no-unused-expressions:
+    - error
+  no-underscore-dangle:
+    - error
+    - allowAfterThis: true
+      allowAfterSuper: true
+      enforceInMethodNames: true
+  one-var:
+    - error
+    - never
+  "@typescript-eslint/no-non-null-assertion":
+    - off

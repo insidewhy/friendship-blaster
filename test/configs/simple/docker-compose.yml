@@ -1,0 +1,10 @@
+version: "3"
+services:
+  echo-server-type1:
+    image: localhost:5000/echo-server-type1:10.0.0
+    volumes:
+      - ./mnt:/mnt
+  echo-server-type2:
+    image: localhost:5000/echo-server-type2:8.0.0
+    volumes:
+      - ./mnt:/mnt

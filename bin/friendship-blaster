@@ -1,0 +1,42 @@
+#!/usr/bin/env sh
+
+input_args=("$@")
+fblaster_args=()
+docker_args=(--rm -v /var/run/docker.sock:/var/run/docker.sock)
+
+# find the directory if it is specified, otherwise set the -d flag according
+# to the current working directory, also detect and remove --host-net when
+# it is specified
+for i in ${!input_args[@]} ; do
+  arg="${input_args[$i]}"
+  if [ $arg = --host-net ] ; then
+    docker_args+=(--network host)
+  else
+    if [ $arg = -d ] ; then
+      directory="${input_args[$i + 1]}"
+    fi
+    fblaster_args+=("$arg")
+  fi
+done
+if [ -z $directory ] ; then
+  fblaster_args+=(-d $PWD)
+  directory=$PWD
+fi
+
+package_json="$(dirname $0)/../package.json"
+version=$(cat $package_json | grep version | cut -d\" -f4)
+
+# It is important to use `exec` here so that the shell script process image is
+# replaced with docker's, this ensures that signals will be forwarded to docker
+# and that the exit code of this process will be that of the docker process.
+# Also note that -v $directory:$directory is used to ensure the mounted
+# directory matches the directory of the docker-compose file, this is due to
+# the fact that the volume mount paths supplied by docker-compose relate to the
+# *host system* not the docker-compose container.
+
+if [ -n "$LOCAL_COMPOSE" ] ; then
+  exec node "$(dirname $0)/../lib/index.js" "${fblaster_args[@]}"
+else
+  exec docker run "${docker_args[@]}" -v $directory:$directory \
+    friendship-blaster:$version /usr/bin/node /home/fblaster/lib/index.js "${fblaster_args[@]}"
+fi

@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "skipLibCheck": true,
+    "noImplicitAny": false,
+    "esModuleInterop": true,
+    "module": "commonjs",
+    "outDir": "./lib",
+    "allowJs": true,
+    "preserveWatchOutput": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "removeComments": true,
+    "sourceMap": true,
+    "target": "es2018",
+    "lib": ["dom", "es2018", "esnext.asynciterable"]
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules"]
+}
