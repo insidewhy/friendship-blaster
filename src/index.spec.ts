@@ -17,7 +17,7 @@ import { FBLASTER_VERSION_FILE } from ".";
 const pUnlink = promisify(unlink);
 
 describe("friendship-blaster", () => {
-  jest.setTimeout(30000);
+  jest.setTimeout(60000);
 
   let fblasterProcess: Process | undefined = undefined;
 
@@ -115,7 +115,8 @@ describe("friendship-blaster", () => {
 
       const stupidlyHighVersion = "400.0.0";
       await buildAndPushTestImage(ECHO_SERVER, TYPE1, stupidlyHighVersion);
-      await delay(7000);
+      // give the debounce + interval a chance to ignore the update
+      await delay(20000);
 
       await buildAndPushTestImage(ECHO_SERVER, TYPE1, UPDATED_VERSION_TYPE1);
       // remove the local copy of the image, otherwise fblaster won't be able

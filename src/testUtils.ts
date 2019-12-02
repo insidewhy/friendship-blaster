@@ -184,9 +184,9 @@ export const spawnTestFriendshipBlaster = (imageArg: string): Process =>
       "--shutdown-timeout",
       "2",
       "--poll-interval",
-      "3",
+      "5",
       "--debounce",
-      "3",
+      "5",
       // to allow the self-signed HTTPS certificate used for the tests
       "--insecure",
     ],
