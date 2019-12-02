@@ -7,7 +7,6 @@ import Docker from "dockerode";
 
 import { runCommand, spawnProcess, Process } from "./processes";
 import { FBLASTER_COMPOSE_FILE } from ".";
-import { waitForDocker } from "./docker";
 
 const pRimraf = util.promisify(rimraf);
 const pMkdir = util.promisify(mkdir);

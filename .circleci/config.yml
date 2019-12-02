@@ -1,0 +1,46 @@
+version: 2.1
+
+commands:
+  hack-circle-ci-machine-executor:
+    steps:
+      - run:
+          # the machine executor's bash environment is weird, you have to use
+          # nvm to set the node version in every single build step which is not
+          # acceptable
+          name: Hack circleci machine executor
+          command: |
+            cd /opt/circleci/.nvm
+            source nvm.sh
+            nvm install 10.16
+            cd versions/node
+            rm -rf v6.1.0
+            ln -sF v10.16* v6.1.0
+
+jobs:
+  test:
+    machine:
+      image: ubuntu-1604:201903-01
+
+    working_directory: ~/friendship-blaster
+
+    steps:
+      - hack-circle-ci-machine-executor
+      - run: npm install -g yarn
+      - checkout
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "yarn.lock" }}
+            - v1-dependencies-
+      - run: yarn install
+      - save_cache:
+          paths:
+            - node_modules
+          key: v1-dependencies-{{ checksum "yarn.lock" }}
+      - run: yarn build-code
+      - run: yarn build-image
+      - run: yarn test
+
+workflows:
+  test:
+    jobs:
+      - test

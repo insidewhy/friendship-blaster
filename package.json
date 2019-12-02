@@ -12,9 +12,8 @@
     "build-image": "node ./lib/buildImage.js",
     "lint": "eslint 'src/**/*.ts'",
     "lint-fix": "eslint --fix 'src/**/*.ts'",
-    "jest": "jest --config=./jest.conf.json --verbose",
-    "test": "yarn build && yarn jest",
-    "test-dev": "yarn build-code && LOCAL_COMPOSE=true yarn jest",
+    "test": "jest --config=./jest.conf.json --verbose",
+    "test-dev": "yarn build-code && LOCAL_COMPOSE=true yarn test",
     "typecheck": "yarn build-code --noEmit",
     "make-prettier": "prettier --write '**/*.{ts,json,md}'",
     "validate-prettiness": "prettier -c '**/*.{ts,json,md}'"

@@ -1,5 +1,8 @@
 # friendship blaster
 
+[![build status](https://circleci.com/gh/ohjames/friendship-blaster.png?style=shield)](https://circleci.com/gh/ohjames/friendship-blaster)
+[![Known Vulnerabilities](https://snyk.io/test/github/ohjames/friendship-blaster/badge.svg)](https://snyk.io/test/github/ohjames/friendship-blaster)
+
 This is a tool to run a system of containers using `docker-compose` and update them as new version are published. It works using a master container running `docker-compose`, which schedules sibling containers.
 
 ## usage
