@@ -14,7 +14,7 @@ import { Observable } from "rxjs";
 import { exists, readFile, writeFile } from "fs";
 import { once, mapValues } from "lodash";
 
-import { getConfigFromArgv, Config, ImageSet } from "./config";
+import { getConfigFromArgv, Config, ImageSet, AuthConfig } from "./config";
 import { spawnProcess, Process } from "./processes";
 import {
   DockerComposeConfig,
@@ -107,6 +107,7 @@ function subscribeToImageUpdates(
     pollableImages,
     config.pollInterval,
     config.allowInsecureHttps,
+    config.auth,
   );
 }
 
@@ -259,12 +260,12 @@ async function respawnDockerComposeWithNewConfig(
  * success. Due to the lazy nature of observables this retry process can be
  * cancelled by an unsubscription.
  */
-const tryToPullImages = ([prevImages, newPollableImages]: [
-  TaggedImages,
-  TaggedImages,
-]): Observable<TaggedImages> => {
+const tryToPullImages = (
+  auth: AuthConfig | undefined,
+  [prevImages, newPollableImages]: [TaggedImages, TaggedImages],
+): Observable<TaggedImages> => {
   return promiseFactoryToObservable(async () => {
-    await pullChangedImages(prevImages, newPollableImages);
+    await pullChangedImages(auth, prevImages, newPollableImages);
     return newPollableImages;
   }).pipe(
     tap(null, error => {
@@ -386,7 +387,7 @@ async function runFriendshipBlaster(config: Config): Promise<() => void> {
       // Emit in pairs of [previous, next]
       pairwise(),
 
-      switchMap(tryToPullImages),
+      switchMap(tryToPullImages.bind(null, config.auth)),
 
       // Due to the chain of switchMap operators, if a new config is detected while the
       // images are still being pulled, the docker-compose restart for this config will
@@ -431,7 +432,7 @@ export default runFriendshipBlaster;
  */
 async function main(): Promise<void> {
   try {
-    const config = getConfigFromArgv();
+    const config = await getConfigFromArgv();
     const onExit = once(await runFriendshipBlaster(config));
 
     process.on("exit", onExit);

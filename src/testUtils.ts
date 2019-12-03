@@ -16,6 +16,9 @@ const pUnlink = util.promisify(unlink);
 
 const TEST_CONTAINER_REPO_PORT = "5000";
 const TEST_CONTAINER_REPO = `localhost:${TEST_CONTAINER_REPO_PORT}`;
+const TEST_CONTAINER_REPO_USER = "testuser";
+const TEST_CONTAINER_REPO_PASSWORD = "testpassword";
+
 const REGISTRY_CONTAINER_NAME = "friendship-blaster-test-registry";
 const FRIENDSHIP_BLASTER_BIN = path.join(
   __dirname,
@@ -33,6 +36,13 @@ const TEST_DOCKER_COMPOSE_CONFIG = path.join(
   "test",
   "docker-compose.yml",
 );
+// extend the previous config file to require authentication
+const TEST_DOCKER_COMPOSE_WITH_AUTH_CONFIG = path.join(
+  __dirname,
+  "..",
+  "test",
+  "docker-compose-with-auth.yml",
+);
 
 const createDocker = (): Docker =>
   new Docker({ socketPath: "/var/run/docker.sock" });
@@ -42,12 +52,15 @@ const createDocker = (): Docker =>
 let testDockerComposeProc: Process | undefined = undefined;
 
 // start test container registry and wait for it to be ready
-export const startTestContainerRegistry = async (): Promise<void> => {
+export const startTestContainerRegistry = async (
+  withAuth: boolean,
+): Promise<void> => {
   // ensure previous registry is deleted
   await runCommand([
     "docker-compose",
     "-f",
     TEST_DOCKER_COMPOSE_CONFIG,
+    ...(withAuth ? ["-f", TEST_DOCKER_COMPOSE_WITH_AUTH_CONFIG] : []),
     "down",
   ]);
 
@@ -78,6 +91,17 @@ export const startTestContainerRegistry = async (): Promise<void> => {
   // timeout exceeded
   throw new Error("Registry container did not start in time");
 };
+
+export const loginToTestContainerRegistry = async (): Promise<void> =>
+  runCommand([
+    "docker",
+    "login",
+    TEST_CONTAINER_REPO,
+    "-u",
+    TEST_CONTAINER_REPO_USER,
+    "-p",
+    TEST_CONTAINER_REPO_PASSWORD,
+  ]);
 
 // stop the docker container registry used by the tests if it is running.
 export const stopTestContainerRegistry = async (): Promise<void> => {
@@ -174,7 +198,10 @@ export const pollFileForLines = async (
 };
 
 // spawn friendship-blaster inside of a docker container.
-export const spawnTestFriendshipBlaster = (imageArg: string): Process =>
+export const spawnTestFriendshipBlaster = (
+  imageArg: string,
+  withAuth: boolean,
+): Process =>
   spawnProcess(
     [
       FRIENDSHIP_BLASTER_BIN,
@@ -187,6 +214,7 @@ export const spawnTestFriendshipBlaster = (imageArg: string): Process =>
       "5",
       "--debounce",
       "5",
+      ...(withAuth ? ["--credentials", "credentials.txt"] : []),
       // to allow the self-signed HTTPS certificate used for the tests
       "--insecure",
     ],

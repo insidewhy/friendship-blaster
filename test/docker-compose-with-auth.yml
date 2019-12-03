@@ -1,0 +1,7 @@
+version: "3"
+services:
+  docker-compose:
+    environment:
+      - REGISTRY_AUTH=htpasswd
+      - REGISTRY_AUTH_HTPASSWD_REALM=Sorealm
+      - REGISTRY_AUTH_HTPASSWD_PATH=/config/htpasswd

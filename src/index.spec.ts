@@ -10,6 +10,7 @@ import {
   pollFileForLines,
   spawnTestFriendshipBlaster,
   removeTestImage,
+  loginToTestContainerRegistry,
 } from "./testUtils";
 import { Process, runCommand } from "./processes";
 import { FBLASTER_VERSION_FILE } from ".";
@@ -17,7 +18,7 @@ import { FBLASTER_VERSION_FILE } from ".";
 const pUnlink = promisify(unlink);
 
 describe("friendship-blaster", () => {
-  jest.setTimeout(60000);
+  jest.setTimeout(70000);
 
   let fblasterProcess: Process | undefined = undefined;
 
@@ -28,7 +29,6 @@ describe("friendship-blaster", () => {
     }
   };
 
-  beforeEach(() => startTestContainerRegistry());
   afterEach(() =>
     Promise.all([stopTestContainerRegistry(), shutdownFblaster()]),
   );
@@ -46,9 +46,12 @@ describe("friendship-blaster", () => {
     const UPDATED_VERSION_TYPE1 = "10.0.1";
     const UPDATED_VERSION_TYPE2 = "8.0.1";
 
-    const spawnFriendshipBlasterWithSimpleConfig = (): void => {
+    const spawnFriendshipBlasterWithSimpleConfig = (
+      withAuth: boolean,
+    ): void => {
       fblasterProcess = spawnTestFriendshipBlaster(
         "echo-server-type1,echo-server-type2",
+        withAuth,
       );
     };
 
@@ -62,7 +65,7 @@ describe("friendship-blaster", () => {
       expect(lines2).toEqual([INITIAL_VERSION_TYPE2]);
     };
 
-    beforeEach(async () => {
+    const prepareTestConfigurationDirectory = async (): Promise<void> => {
       await chdirToTestConfig("simple");
       await Promise.all([
         pUnlink(FBLASTER_VERSION_FILE).catch(() => {}),
@@ -70,8 +73,7 @@ describe("friendship-blaster", () => {
         buildAndPushTestImage(ECHO_SERVER, TYPE2, INITIAL_VERSION_TYPE2),
         emptyDirectory("mnt"),
       ]);
-      spawnFriendshipBlasterWithSimpleConfig();
-    });
+    };
 
     afterEach(async () => {
       // delete docker containers created by friendship-blaster process
@@ -85,163 +87,175 @@ describe("friendship-blaster", () => {
       ]);
     });
 
-    it("is able to run simple docker-compose.yml configuration", async () => {
-      await waitForInitialState();
-      await shutdownFblaster();
+    describe("and no authentication", () => {
+      beforeEach(async () => {
+        await startTestContainerRegistry(false);
+        await prepareTestConfigurationDirectory();
+        spawnFriendshipBlasterWithSimpleConfig(false);
+      });
+
+      it("is able to run simple docker-compose.yml configuration", async () => {
+        await waitForInitialState();
+      });
     });
 
-    it("is able to poll for updates and restart configuration when a single update is found", async () => {
-      await waitForInitialState();
+    describe("and authentication", () => {
+      beforeEach(async () => {
+        await startTestContainerRegistry(true);
+        await loginToTestContainerRegistry();
+        await prepareTestConfigurationDirectory();
+        spawnFriendshipBlasterWithSimpleConfig(true);
+      });
 
-      await buildAndPushTestImage(ECHO_SERVER, TYPE1, UPDATED_VERSION_TYPE1);
-      // remove the local copy of the image, otherwise fblaster won't be able
-      // to pull it... if its interval triggers before this happens then this
-      // would mess up the test, but the poll interval of 3s should ensure it
-      // that this won't happen
-      await removeTestImage(ECHO_SERVER, TYPE1, UPDATED_VERSION_TYPE1);
+      it("is able to run simple docker-compose.yml configuration", async () => {
+        await waitForInitialState();
+      });
 
-      const [lines1, lines2] = await Promise.all([
-        pollFileForLines("mnt/type1", 2),
-        pollFileForLines("mnt/type2", 2),
-      ]);
-      expect(lines1).toEqual([INITIAL_VERSION_TYPE1, UPDATED_VERSION_TYPE1]);
-      expect(lines2).toEqual([INITIAL_VERSION_TYPE2, INITIAL_VERSION_TYPE2]);
+      it("is able to poll for updates and restart configuration when a single update is found", async () => {
+        await waitForInitialState();
 
-      await shutdownFblaster();
-    });
+        await buildAndPushTestImage(ECHO_SERVER, TYPE1, UPDATED_VERSION_TYPE1);
+        // remove the local copy of the image, otherwise fblaster won't be able
+        // to pull it... if its interval triggers before this happens then this
+        // would mess up the test, but the poll interval of 3s should ensure it
+        // that this won't happen
+        await removeTestImage(ECHO_SERVER, TYPE1, UPDATED_VERSION_TYPE1);
 
-    it("skips incompatible versions", async () => {
-      await waitForInitialState();
+        const [lines1, lines2] = await Promise.all([
+          pollFileForLines("mnt/type1", 2),
+          pollFileForLines("mnt/type2", 2),
+        ]);
+        expect(lines1).toEqual([INITIAL_VERSION_TYPE1, UPDATED_VERSION_TYPE1]);
+        expect(lines2).toEqual([INITIAL_VERSION_TYPE2, INITIAL_VERSION_TYPE2]);
+      });
 
-      const stupidlyHighVersion = "400.0.0";
-      await buildAndPushTestImage(ECHO_SERVER, TYPE1, stupidlyHighVersion);
-      // give the debounce + interval a chance to ignore the update
-      await delay(20000);
+      it("skips incompatible versions", async () => {
+        await waitForInitialState();
 
-      await buildAndPushTestImage(ECHO_SERVER, TYPE1, UPDATED_VERSION_TYPE1);
-      // remove the local copy of the image, otherwise fblaster won't be able
-      // to pull it... if its interval triggers before this happens then this
-      // would mess up the test, but the poll interval of 3s should ensure it
-      // that this won't happen
-      await removeTestImage(ECHO_SERVER, TYPE1, UPDATED_VERSION_TYPE1);
+        const stupidlyHighVersion = "400.0.0";
+        await buildAndPushTestImage(ECHO_SERVER, TYPE1, stupidlyHighVersion);
+        // give the debounce + interval a chance to ignore the update
+        await delay(20000);
 
-      const [lines1, lines2] = await Promise.all([
-        pollFileForLines("mnt/type1", 2),
-        pollFileForLines("mnt/type2", 2),
-      ]);
-      expect(lines1).toEqual([INITIAL_VERSION_TYPE1, UPDATED_VERSION_TYPE1]);
-      expect(lines2).toEqual([INITIAL_VERSION_TYPE2, INITIAL_VERSION_TYPE2]);
+        await buildAndPushTestImage(ECHO_SERVER, TYPE1, UPDATED_VERSION_TYPE1);
+        // remove the local copy of the image, otherwise fblaster won't be able
+        // to pull it... if its interval triggers before this happens then this
+        // would mess up the test, but the poll interval of 3s should ensure it
+        // that this won't happen
+        await removeTestImage(ECHO_SERVER, TYPE1, UPDATED_VERSION_TYPE1);
 
-      await shutdownFblaster();
-      await removeTestImage(ECHO_SERVER, TYPE1, stupidlyHighVersion);
-    });
+        const [lines1, lines2] = await Promise.all([
+          pollFileForLines("mnt/type1", 2),
+          pollFileForLines("mnt/type2", 2),
+        ]);
+        expect(lines1).toEqual([INITIAL_VERSION_TYPE1, UPDATED_VERSION_TYPE1]);
+        expect(lines2).toEqual([INITIAL_VERSION_TYPE2, INITIAL_VERSION_TYPE2]);
 
-    it("debounces multiple changes to avoid unnecessary restarts", async () => {
-      await waitForInitialState();
+        await shutdownFblaster();
+        await removeTestImage(ECHO_SERVER, TYPE1, stupidlyHighVersion);
+      });
 
-      await Promise.all([
-        buildAndPushTestImage(ECHO_SERVER, TYPE1, UPDATED_VERSION_TYPE1),
-        buildAndPushTestImage(ECHO_SERVER, TYPE2, UPDATED_VERSION_TYPE2),
-      ]);
-      await Promise.all([
-        await removeTestImage(ECHO_SERVER, TYPE1, UPDATED_VERSION_TYPE1),
-        await removeTestImage(ECHO_SERVER, TYPE2, UPDATED_VERSION_TYPE2),
-      ]);
+      it("debounces multiple changes to avoid unnecessary restarts", async () => {
+        await waitForInitialState();
 
-      const [lines1, lines2] = await Promise.all([
-        pollFileForLines("mnt/type1", 2),
-        pollFileForLines("mnt/type2", 2),
-      ]);
-      expect(lines1).toEqual([INITIAL_VERSION_TYPE1, UPDATED_VERSION_TYPE1]);
-      expect(lines2).toEqual([INITIAL_VERSION_TYPE2, UPDATED_VERSION_TYPE2]);
+        await Promise.all([
+          buildAndPushTestImage(ECHO_SERVER, TYPE1, UPDATED_VERSION_TYPE1),
+          buildAndPushTestImage(ECHO_SERVER, TYPE2, UPDATED_VERSION_TYPE2),
+        ]);
+        await Promise.all([
+          await removeTestImage(ECHO_SERVER, TYPE1, UPDATED_VERSION_TYPE1),
+          await removeTestImage(ECHO_SERVER, TYPE2, UPDATED_VERSION_TYPE2),
+        ]);
 
-      await shutdownFblaster();
-    });
+        const [lines1, lines2] = await Promise.all([
+          pollFileForLines("mnt/type1", 2),
+          pollFileForLines("mnt/type2", 2),
+        ]);
+        expect(lines1).toEqual([INITIAL_VERSION_TYPE1, UPDATED_VERSION_TYPE1]);
+        expect(lines2).toEqual([INITIAL_VERSION_TYPE2, UPDATED_VERSION_TYPE2]);
+      });
 
-    it("responds to multiple changes outside of debounce period", async () => {
-      await waitForInitialState();
+      it("responds to multiple changes outside of debounce period", async () => {
+        await waitForInitialState();
 
-      await buildAndPushTestImage(ECHO_SERVER, TYPE1, UPDATED_VERSION_TYPE1);
-      await removeTestImage(ECHO_SERVER, TYPE1, UPDATED_VERSION_TYPE1);
+        await buildAndPushTestImage(ECHO_SERVER, TYPE1, UPDATED_VERSION_TYPE1);
+        await removeTestImage(ECHO_SERVER, TYPE1, UPDATED_VERSION_TYPE1);
 
-      const [firstLines1, firstLines2] = await Promise.all([
-        pollFileForLines("mnt/type1", 2),
-        pollFileForLines("mnt/type2", 2),
-      ]);
-      expect(firstLines1).toEqual([
-        INITIAL_VERSION_TYPE1,
-        UPDATED_VERSION_TYPE1,
-      ]);
-      expect(firstLines2).toEqual([
-        INITIAL_VERSION_TYPE2,
-        INITIAL_VERSION_TYPE2,
-      ]);
+        const [firstLines1, firstLines2] = await Promise.all([
+          pollFileForLines("mnt/type1", 2),
+          pollFileForLines("mnt/type2", 2),
+        ]);
+        expect(firstLines1).toEqual([
+          INITIAL_VERSION_TYPE1,
+          UPDATED_VERSION_TYPE1,
+        ]);
+        expect(firstLines2).toEqual([
+          INITIAL_VERSION_TYPE2,
+          INITIAL_VERSION_TYPE2,
+        ]);
 
-      await buildAndPushTestImage(ECHO_SERVER, TYPE2, UPDATED_VERSION_TYPE2);
-      await removeTestImage(ECHO_SERVER, TYPE2, UPDATED_VERSION_TYPE2);
-      const [lines1, lines2] = await Promise.all([
-        pollFileForLines("mnt/type1", 3),
-        pollFileForLines("mnt/type2", 3),
-      ]);
-      expect(lines1).toEqual([
-        INITIAL_VERSION_TYPE1,
-        UPDATED_VERSION_TYPE1,
-        UPDATED_VERSION_TYPE1,
-      ]);
-      expect(lines2).toEqual([
-        INITIAL_VERSION_TYPE2,
-        INITIAL_VERSION_TYPE2,
-        UPDATED_VERSION_TYPE2,
-      ]);
+        await buildAndPushTestImage(ECHO_SERVER, TYPE2, UPDATED_VERSION_TYPE2);
+        await removeTestImage(ECHO_SERVER, TYPE2, UPDATED_VERSION_TYPE2);
+        const [lines1, lines2] = await Promise.all([
+          pollFileForLines("mnt/type1", 3),
+          pollFileForLines("mnt/type2", 3),
+        ]);
+        expect(lines1).toEqual([
+          INITIAL_VERSION_TYPE1,
+          UPDATED_VERSION_TYPE1,
+          UPDATED_VERSION_TYPE1,
+        ]);
+        expect(lines2).toEqual([
+          INITIAL_VERSION_TYPE2,
+          INITIAL_VERSION_TYPE2,
+          UPDATED_VERSION_TYPE2,
+        ]);
+      });
 
-      await shutdownFblaster();
-    });
+      it("picks up latest image versions when restarted", async () => {
+        await waitForInitialState();
 
-    it("picks up latest image versions when restarted", async () => {
-      await waitForInitialState();
+        await Promise.all([
+          buildAndPushTestImage(ECHO_SERVER, TYPE1, UPDATED_VERSION_TYPE1),
+          buildAndPushTestImage(ECHO_SERVER, TYPE2, UPDATED_VERSION_TYPE2),
+        ]);
+        await Promise.all([
+          await removeTestImage(ECHO_SERVER, TYPE1, UPDATED_VERSION_TYPE1),
+          await removeTestImage(ECHO_SERVER, TYPE2, UPDATED_VERSION_TYPE2),
+        ]);
 
-      await Promise.all([
-        buildAndPushTestImage(ECHO_SERVER, TYPE1, UPDATED_VERSION_TYPE1),
-        buildAndPushTestImage(ECHO_SERVER, TYPE2, UPDATED_VERSION_TYPE2),
-      ]);
-      await Promise.all([
-        await removeTestImage(ECHO_SERVER, TYPE1, UPDATED_VERSION_TYPE1),
-        await removeTestImage(ECHO_SERVER, TYPE2, UPDATED_VERSION_TYPE2),
-      ]);
+        const [preRestartLines1, preRestartLines2] = await Promise.all([
+          pollFileForLines("mnt/type1", 2),
+          pollFileForLines("mnt/type2", 2),
+        ]);
+        expect(preRestartLines1).toEqual([
+          INITIAL_VERSION_TYPE1,
+          UPDATED_VERSION_TYPE1,
+        ]);
+        expect(preRestartLines2).toEqual([
+          INITIAL_VERSION_TYPE2,
+          UPDATED_VERSION_TYPE2,
+        ]);
 
-      const [preRestartLines1, preRestartLines2] = await Promise.all([
-        pollFileForLines("mnt/type1", 2),
-        pollFileForLines("mnt/type2", 2),
-      ]);
-      expect(preRestartLines1).toEqual([
-        INITIAL_VERSION_TYPE1,
-        UPDATED_VERSION_TYPE1,
-      ]);
-      expect(preRestartLines2).toEqual([
-        INITIAL_VERSION_TYPE2,
-        UPDATED_VERSION_TYPE2,
-      ]);
+        await shutdownFblaster();
 
-      await shutdownFblaster();
-
-      // restart it and make sure still on latest versions
-      spawnFriendshipBlasterWithSimpleConfig();
-      const [lines1, lines2] = await Promise.all([
-        pollFileForLines("mnt/type1", 3),
-        pollFileForLines("mnt/type2", 3),
-      ]);
-      expect(lines1).toEqual([
-        INITIAL_VERSION_TYPE1,
-        UPDATED_VERSION_TYPE1,
-        UPDATED_VERSION_TYPE1,
-      ]);
-      expect(lines2).toEqual([
-        INITIAL_VERSION_TYPE2,
-        UPDATED_VERSION_TYPE2,
-        UPDATED_VERSION_TYPE2,
-      ]);
-
-      await shutdownFblaster();
+        // restart it and make sure still on latest versions
+        spawnFriendshipBlasterWithSimpleConfig(true);
+        const [lines1, lines2] = await Promise.all([
+          pollFileForLines("mnt/type1", 3),
+          pollFileForLines("mnt/type2", 3),
+        ]);
+        expect(lines1).toEqual([
+          INITIAL_VERSION_TYPE1,
+          UPDATED_VERSION_TYPE1,
+          UPDATED_VERSION_TYPE1,
+        ]);
+        expect(lines2).toEqual([
+          INITIAL_VERSION_TYPE2,
+          UPDATED_VERSION_TYPE2,
+          UPDATED_VERSION_TYPE2,
+        ]);
+      });
     });
   });
 });
