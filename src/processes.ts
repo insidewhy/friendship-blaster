@@ -66,9 +66,11 @@ export const spawnProcess = (
   options: ProcessOptions = {},
 ): Process => {
   const spawnOptions: SpawnOptions = {};
-  if (options.showStdout) {
-    spawnOptions.stdio = ["pipe", "inherit", "pipe"];
-  }
+  spawnOptions.stdio = [
+    "pipe",
+    options.showStdout ? "inherit" : "ignore",
+    "pipe",
+  ];
   const proc = spawn(commandAndArgs[0], commandAndArgs.slice(1), spawnOptions);
   return new Process(proc, commandAndArgs, options.showStderr);
 };

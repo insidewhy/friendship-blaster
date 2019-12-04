@@ -7,6 +7,7 @@ import { map, filter, catchError, mergeScan, scan } from "rxjs/operators";
 
 import { TaggedImage, TaggedImages } from "./docker";
 import { isDefined, debugLog } from "./util";
+import { AuthConfig } from "./config";
 
 const MAX_CONTAINER_TAGS = 999999999;
 
@@ -18,11 +19,13 @@ const MAX_CONTAINER_TAGS = 999999999;
  */
 function pollImageForUpdates(
   allowInsecureHttps: boolean,
+  auth: AuthConfig | undefined,
   pollableImage: TaggedImage,
 ): Observable<TaggedImage> {
   const tagUrl = `https://${pollableImage.repoUrl}/v2/${pollableImage.image}/tags/list`;
   const axiosOptions: AxiosRequestConfig = {
     params: { n: MAX_CONTAINER_TAGS },
+    auth,
   };
 
   if (allowInsecureHttps) {
@@ -66,12 +69,13 @@ function pollImagesForUpdate(
   initialPollableImages: TaggedImages,
   pollFrequency: number,
   allowInsecureHttps: boolean,
+  auth?: AuthConfig,
 ): Observable<TaggedImages> {
   return merge(
     ...initialPollableImages.map(initialPollableImage =>
       interval(pollFrequency * 1000).pipe(
         mergeScan(
-          pollImageForUpdates.bind(null, allowInsecureHttps),
+          pollImageForUpdates.bind(null, allowInsecureHttps, auth),
           // initial value for mergeScan accumulator
           initialPollableImage,
           // max mergeScan concurrency of 1 i.e. switchScan

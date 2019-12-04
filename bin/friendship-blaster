@@ -12,7 +12,7 @@ for i in ${!input_args[@]} ; do
   if [ $arg = --host-net ] ; then
     docker_args+=(--network host)
   else
-    if [ $arg = -d ] ; then
+    if [ $arg = -d -o $arg = --directory ] ; then
       directory="${input_args[$i + 1]}"
     fi
     fblaster_args+=("$arg")
@@ -22,6 +22,9 @@ if [ -z $directory ] ; then
   fblaster_args+=(-d $PWD)
   directory=$PWD
 fi
+
+# ensure a relative path for --credentials/-c still works
+docker_args+=(--workdir=$directory)
 
 package_json="$(dirname $0)/../package.json"
 version=$(cat $package_json | grep version | cut -d\" -f4)

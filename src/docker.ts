@@ -1,6 +1,7 @@
 import Docker from "dockerode";
 
 import { debugLog } from "./util";
+import { AuthConfig } from "./config";
 
 /**
  * This represents the section of the docker-compose.yml that friendship-blaster cares about
@@ -92,10 +93,20 @@ export const waitForDocker = (docker: Docker, stream: unknown): Promise<void> =>
   new Promise(resolve => docker.modem.followProgress(stream, resolve));
 
 /**
+ * Returns a type of {} because dockerode typings are broken and also
+ * not extendable.
+ */
+export const getAuthOptions = (auth?: AuthConfig): {} =>
+  auth
+    ? { authconfig: { username: auth.username, password: auth.password } }
+    : {};
+
+/**
  * Compares `prevImages` to `newPollableImages` and pulls those which have
  * changed.
  */
 export async function pullChangedImages(
+  auth: AuthConfig | undefined,
   prevImages: TaggedImages,
   newPollableImages: TaggedImages,
 ): Promise<void> {
@@ -115,7 +126,7 @@ export async function pullChangedImages(
       // impossible to augment the type of Docker :(
       const pullStream = await docker.pull(
         `${image.repoUrl}/${image.image}:${image.tag}`,
-        {},
+        getAuthOptions(auth),
       );
       await waitForDocker(docker, pullStream);
     }),
