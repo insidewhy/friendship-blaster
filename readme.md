@@ -37,8 +37,9 @@ it detects an update it will do the following in sequence:
 
 - Pull the latest images.
 - Shutdown all existing containers.
-- Patch the `docker-compose.yml` to refer to the upgraded versions.
-- Start all containers.
+- Create a copy of `docker-compose.yml` but patched to refer to the detected
+  image versions.
+- Restart docker-compose with the patched copy of the original configuration.
 
 ## Example
 
