@@ -3,11 +3,13 @@
 [![build status](https://circleci.com/gh/ohjames/friendship-blaster.png?style=shield)](https://circleci.com/gh/ohjames/friendship-blaster)
 [![Known Vulnerabilities](https://snyk.io/test/github/ohjames/friendship-blaster/badge.svg)](https://snyk.io/test/github/ohjames/friendship-blaster)
 
-This is a tool to run a system of containers using `docker-compose` and update them as new version are published. It works using a master container running `docker-compose`, which schedules sibling containers.
+This is a tool to run a system of docker containers using `docker-compose` and
+update them as new image versions are published.
 
 ## Usage
 
-As input it takes a `docker-compose.yml` and a list of containers that can be upgraded. If the `docker-compose.yml` looks like this:
+As input it takes a `docker-compose.yml` and a list of containers that can be
+upgraded. If the `docker-compose.yml` looks like this:
 
 ```yaml
 version: "3"
@@ -26,7 +28,12 @@ In the directory containing the `docker-compose.yml` run this:
 friendship-blaster -i dog-image,cat-image
 ```
 
-`friendship-blaster` will run the docker-compose configuration file above in a container with `docker-compose` installed. While these containers are running, it will poll the container registry at `some-registry:7420` every one minute to look for updates to `cat-image` and `dog-image` that are above the current version and below the next semantically incompatible version (`11.0.0`). When it detects an update it will do the following in sequence:
+`friendship-blaster` will run the docker-compose configuration file above in a
+container with `docker-compose` installed. While these containers are running,
+it will poll the container registry at `some-registry:7420` every one minute to
+look for updates to `cat-image` and `dog-image` that are above the current
+version and below the next semantically incompatible version (`11.0.0`). When
+it detects an update it will do the following in sequence:
 
 - Pull the latest images.
 - Shutdown all existing containers.
