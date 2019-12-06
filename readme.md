@@ -72,31 +72,30 @@ When friendship-blaster is first run it runs `docker-compose` using the
 `docker-compose.yml` shown above, and every 100 seconds it polls
 `some-registry:7420` for changes to `cat-image` and `dog-image`.
 
-120 seconds the user pushes a new `dog-image` with version `10.0.1`. 200
+120 seconds later the user pushes a new `dog-image` with version `10.0.1`. 200
 seconds later `friendship-blaster` will see this image when it next polls.
 However it will not restart `docker-compose` immediately due to the requested
 `debounce` of 100.
 
 180 seconds later the user pushes a new `cat-image` with version `10.0.2`.
 `friendship-blaster` will see this change in its second poll, 200 seconds after
-it has first started.
+it was first started.
 
 The user does not push any more images for at least 120 seconds, now at 300
-seconds the debounce of 100 has cleared. `friendship-blaster` will create a a
+seconds the debounce of 100 has cleared. `friendship-blaster` will create a
 file `fblaster-docker-compose.yml` in the same directory as
-`docker-compose.yml`, it will be identical to the original but specify the
-docker tags represented by the latest versions it has detected. It also creates
-a file `fblaster-versions.yml` in this directory which will indicate which
-versions it has detected.
+`docker-compose.yml`. This file will be identical to the original except that
+the image versions will specify the latest the docker tags that were detected.
+It also creates a file `fblaster-versions.yml` in this directory which will
+store the reference between the images and their corresponding versions.
 
 Some time later the user decides to shut down `friendship-blaster` by pressing
 ctrl-C in the console where it is running. This will in turn cause
 `friendship-blaster` to shut down `docker-compose`. Then some time after this
 they run `friendship-blaster` in the same directory again. This time
 `friendship-blaster` will load the latest `fblaster-versions.yml` and create a
-`fblaster-docker-compose.yml` reference the latest tagged docker images that it
-has detected. It will then resume polling for new versions from this point in
-time.
+`fblaster-docker-compose.yml` reference the latest tagged docker images. It
+will then resume polling for new versions from this point in time.
 
 ## Implementation details
 
