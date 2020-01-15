@@ -1,6 +1,6 @@
 {
   "name": "friendship-blaster",
-  "version": "1.0.0-alpha.1",
+  "version": "1.0.0-beta.1",
   "description": "simple docker-compose based deployments",
   "main": "lib/index.js",
   "author": "James Pike",
@@ -10,6 +10,7 @@
     "build": "yarn build-code && yarn build-image",
     "build-code": "tsc",
     "build-image": "node ./lib/buildImage.js",
+    "push-release": "./scripts/pushRelease.bash",
     "lint": "eslint 'src/**/*.ts'",
     "lint-fix": "eslint --fix 'src/**/*.ts'",
     "test": "jest --config=./jest.conf.json --verbose",

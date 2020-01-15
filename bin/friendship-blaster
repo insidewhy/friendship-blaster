@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+VERSION=1.0.0-beta.1
+
 input_args=("$@")
 fblaster_args=()
 docker_args=(--rm -v /var/run/docker.sock:/var/run/docker.sock)
@@ -26,9 +28,6 @@ fi
 # ensure a relative path for --credentials/-c still works
 docker_args+=(--workdir=$directory)
 
-package_json="$(dirname $0)/../package.json"
-version=$(cat $package_json | grep version | cut -d\" -f4)
-
 # It is important to use `exec` here so that the shell script process image is
 # replaced with docker's, this ensures that signals will be forwarded to docker
 # and that the exit code of this process will be that of the docker process.
@@ -41,5 +40,5 @@ if [ -n "$LOCAL_COMPOSE" ] ; then
   exec node "$(dirname $0)/../lib/index.js" "${fblaster_args[@]}"
 else
   exec docker run "${docker_args[@]}" -v $directory:$directory \
-    friendship-blaster:$version /usr/bin/node /home/fblaster/lib/index.js "${fblaster_args[@]}"
+    xlos/friendship-blaster:$VERSION /usr/bin/node /home/fblaster/lib/index.js "${fblaster_args[@]}"
 fi

@@ -7,3 +7,4 @@ src/buildImage.ts
 test
 readme.md
 jest.conf.json
+scripts

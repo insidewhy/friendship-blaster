@@ -10,7 +10,13 @@ async function buildContainer(): Promise<void> {
   const containerPath = path.join(__dirname, "..");
   const version = getVersion();
   await runCommand(
-    ["docker", "build", "-t", `friendship-blaster:${version}`, containerPath],
+    [
+      "docker",
+      "build",
+      "-t",
+      `xlos/friendship-blaster:${version}`,
+      containerPath,
+    ],
     {
       showStdout: true,
     },
