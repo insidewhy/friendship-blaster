@@ -4,14 +4,18 @@ import path from "path";
 import { readFile } from "fs";
 import { promisify } from "util";
 
+import { debugLog } from "./util";
+
 const pReadFile = promisify(readFile);
 
 export type ImageSet = Readonly<Set<string>>;
 
-export interface AuthConfig {
+interface RepoAuthConfig {
   username: string;
   password: string;
 }
+
+export type AuthConfig = Map<string, RepoAuthConfig>;
 
 /**
  * Represents the friendship-blaster configuration as specified via commandline
@@ -35,21 +39,43 @@ export interface Config {
 }
 
 const getAuthConfig = async (
-  credentialsFilePath?: string,
+  credentialArgs?: string[],
 ): Promise<AuthConfig | undefined> => {
-  if (!credentialsFilePath) {
+  if (!credentialArgs) {
     return undefined;
   }
 
-  const credentialsLine = await pReadFile(credentialsFilePath);
-  const [username, password] = credentialsLine
-    .toString()
-    .trim()
-    .split(":");
-  if (!username || !password) {
-    throw new Error("Credential file must have the format `username:password'");
-  }
-  return { username, password };
+  const authConfig: AuthConfig = new Map();
+
+  await Promise.all(
+    credentialArgs.map(async credentials => {
+      const lastColon = credentials.lastIndexOf(":");
+      if (lastColon === -1) {
+        throw new Error(
+          `Credentials ${lastColon} should be in format repository-url:file-path`,
+        );
+      }
+
+      const repoUrl = credentials.substr(0, lastColon);
+      const credentialsFilePath = credentials.substr(lastColon + 1);
+
+      const credentialsLine = await pReadFile(credentialsFilePath);
+      const [username, password] = credentialsLine
+        .toString()
+        .trim()
+        .split(":");
+      if (!username || !password) {
+        throw new Error(
+          "Credential file must have the format `username:password'",
+        );
+      }
+
+      authConfig.set(repoUrl, { username, password });
+    }),
+  );
+
+  debugLog("Read credentials %O", authConfig);
+  return authConfig;
 };
 
 function isSubDirectory(referencePath: string, childPath: string): boolean {
@@ -63,9 +89,10 @@ export const getConfigFromArgv = async (): Promise<Config> => {
   const argBuilder = yargs
     .option("credentials", {
       describe:
-        "path to an file specifying the colon separated container registry credentials",
+        "repo url followed by colon followed by path to an file specifying the colon separated container registry credentials",
       alias: "c",
-      type: "string",
+      type: "array",
+      string: true,
     })
     .option("images", {
       describe: "comma separated list of images to watch for updates",
@@ -110,8 +137,14 @@ export const getConfigFromArgv = async (): Promise<Config> => {
   // backup just in case it is executed directly
   const { directory = process.cwd() } = rawConfig;
   const { credentials } = rawConfig;
-  if (credentials && !isSubDirectory(directory, credentials)) {
-    throw new Error(`${credentials} must be within the directory ${directory}`);
+  if (credentials) {
+    credentials.forEach(oneCredential => {
+      if (!isSubDirectory(directory, oneCredential)) {
+        throw new Error(
+          `${oneCredential} must be within the directory ${directory}`,
+        );
+      }
+    });
   }
 
   return Object.freeze({

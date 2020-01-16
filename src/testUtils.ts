@@ -214,7 +214,7 @@ export const spawnTestFriendshipBlaster = (
       "5",
       "--debounce",
       "5",
-      ...(withAuth ? ["--credentials", "credentials.txt"] : []),
+      ...(withAuth ? ["--credentials", "localhost:5000:credentials.txt"] : []),
       // to allow the self-signed HTTPS certificate used for the tests
       "--insecure",
     ],

@@ -25,7 +25,7 @@ function pollImageForUpdates(
   const tagUrl = `https://${pollableImage.repoUrl}/v2/${pollableImage.image}/tags/list`;
   const axiosOptions: AxiosRequestConfig = {
     params: { n: MAX_CONTAINER_TAGS },
-    auth,
+    auth: auth?.get(pollableImage.repoUrl) ?? undefined,
   };
 
   if (allowInsecureHttps) {

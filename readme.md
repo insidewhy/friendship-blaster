@@ -62,12 +62,13 @@ Next the user runs `friendship-blaster` in this directory:
 friendship-blaster --images dog-image,cat-image \
                    --debounce 100 \
                    --poll-interval 100 \
-                   -c credentials.txt
+                   -c some-registry:7420:credentials.txt
 ```
 
 This directory must also contain a file called `credentials.txt` which stores
 the username and password for the container registry `some-registry:7420` in
-the format `username:password`.
+the format `username:password`. The `-c` argument can be specified multiple
+times.
 
 When friendship-blaster is first run it runs `docker-compose` using the
 `docker-compose.yml` shown above, and every 100 seconds it polls
