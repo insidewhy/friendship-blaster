@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-VERSION=1.0.0-beta.1
+VERSION=1.0.0-beta.2
 
 input_args=("$@")
 fblaster_args=()
