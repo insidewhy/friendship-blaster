@@ -68,18 +68,15 @@ export async function loginToContainerRepositories(
     Array.from(authConfig.keys()).map(async repoUrl => {
       const repoAuth: RepoAuthConfig = authConfig.get(repoUrl)!;
       debugLog("Logging in to container registry", repoUrl);
-      await runCommand(
-        [
-          "docker",
-          "login",
-          repoUrl,
-          "-u",
-          repoAuth.username,
-          "-p",
-          repoAuth.password,
-        ],
-        { showStderr: true, showStdout: true },
-      );
+      await runCommand([
+        "docker",
+        "login",
+        repoUrl,
+        "-u",
+        repoAuth.username,
+        "-p",
+        repoAuth.password,
+      ]);
       debugLog("Logged in to container registry", repoUrl);
     }),
   );

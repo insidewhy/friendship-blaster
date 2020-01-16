@@ -55,12 +55,14 @@ let testDockerComposeProc: Process | undefined = undefined;
 export const startTestContainerRegistry = async (
   withAuth: boolean,
 ): Promise<void> => {
+  const authArgs = withAuth ? ["-f", TEST_DOCKER_COMPOSE_WITH_AUTH_CONFIG] : [];
+
   // ensure previous registry is deleted
   await runCommand([
     "docker-compose",
     "-f",
     TEST_DOCKER_COMPOSE_CONFIG,
-    ...(withAuth ? ["-f", TEST_DOCKER_COMPOSE_WITH_AUTH_CONFIG] : []),
+    ...authArgs,
     "down",
   ]);
 
@@ -68,6 +70,7 @@ export const startTestContainerRegistry = async (
     "docker-compose",
     "-f",
     TEST_DOCKER_COMPOSE_CONFIG,
+    ...authArgs,
     "up",
     "-t",
     "2",
