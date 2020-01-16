@@ -1,7 +1,8 @@
 import Docker from "dockerode";
 
 import { debugLog } from "./util";
-import { AuthConfig } from "./config";
+import { AuthConfig, RepoAuthConfig } from "./config";
+import { runCommand } from "./processes";
 
 /**
  * This represents the section of the docker-compose.yml that friendship-blaster cares about
@@ -55,6 +56,33 @@ export function assertTaggedImageList(
       throw new Error("Version entry did not contain string repoUrl property");
     }
   });
+}
+
+/**
+ * Login to all the docker repositories specified in authConfig
+ */
+export async function loginToContainerRepositories(
+  authConfig: AuthConfig,
+): Promise<void> {
+  await Promise.all(
+    Array.from(authConfig.keys()).map(async repoUrl => {
+      const repoAuth: RepoAuthConfig = authConfig.get(repoUrl)!;
+      debugLog("Logging in to container registry", repoUrl);
+      await runCommand(
+        [
+          "docker",
+          "login",
+          repoUrl,
+          "-u",
+          repoAuth.username,
+          "-p",
+          repoAuth.password,
+        ],
+        { showStderr: true, showStdout: true },
+      );
+      debugLog("Logged in to container registry", repoUrl);
+    }),
+  );
 }
 
 /**

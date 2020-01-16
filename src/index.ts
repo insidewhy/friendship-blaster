@@ -22,6 +22,7 @@ import {
   TaggedImages,
   pullChangedImages,
   assertTaggedImageList,
+  loginToContainerRepositories,
 } from "./docker";
 import pollImagesForUpdate from "./pollImagesForUpdate";
 import { isDefined, debugLog, promiseFactoryToObservable } from "./util";
@@ -349,6 +350,10 @@ async function getLatestPollableImages(
  * The main entry point to the friendship blaster API.
  */
 async function runFriendshipBlaster(config: Config): Promise<() => void> {
+  if (config.auth) {
+    await loginToContainerRepositories(config.auth);
+  }
+
   // the pure config before the latest versions as described by the
   // docker-compose.yml before the latest versions from the version state file
   // have been merged in

@@ -10,7 +10,7 @@ const pReadFile = promisify(readFile);
 
 export type ImageSet = Readonly<Set<string>>;
 
-interface RepoAuthConfig {
+export interface RepoAuthConfig {
   username: string;
   password: string;
 }
