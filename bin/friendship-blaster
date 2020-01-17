@@ -4,7 +4,7 @@ VERSION=1.0.0-beta.2
 
 input_args=("$@")
 fblaster_args=()
-docker_args=(--rm -v /var/run/docker.sock:/var/run/docker.sock)
+docker_args=(--rm -v /var/run/docker.sock:/var/run/docker.sock -e DEBUG)
 
 # find the directory if it is specified, otherwise set the -d flag according
 # to the current working directory, also detect and remove --host-net when
