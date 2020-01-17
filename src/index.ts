@@ -381,6 +381,8 @@ async function runFriendshipBlaster(config: Config): Promise<() => void> {
 
   const dockerComposeProc = spawnDockerCompose(config, dockerComposeConfig);
 
+  console.info("Run initial images: %O", pollableImages);
+
   const pollObservable = subscribeToImageUpdates(pollableImages, config);
   const pollSubscription = pollObservable
     .pipe(
@@ -413,7 +415,7 @@ async function runFriendshipBlaster(config: Config): Promise<() => void> {
     )
     .subscribe(
       (pollableImages: TaggedImages) => {
-        console.info("Updated to latest configuration: %O", pollableImages);
+        console.info("Updated to latest images: %O", pollableImages);
       },
       (error: Error) => {
         console.error(
