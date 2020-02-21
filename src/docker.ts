@@ -148,7 +148,7 @@ export async function pullChangedImages(
     return matchingPrev!.tag !== tag;
   });
 
-  const docker = new Docker({ socketPath: "/var/run/docker.sock" });
+  const docker = new Docker();
 
   debugLog("Pull changed images: %O", changedImages);
   await Promise.all(

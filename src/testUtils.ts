@@ -183,6 +183,8 @@ export const emptyDirectory = async (dirPath: string): Promise<void> => {
 export const pollFileForLines = async (
   filePath: string,
   lineCount: number,
+  // throws an error when there are more lines in the file than lineCount if exact is set
+  exact = false,
 ): Promise<string[]> => {
   while (!(await pExists(filePath))) {
     await delay(100);
@@ -193,8 +195,19 @@ export const pollFileForLines = async (
       .toString()
       .trim()
       .split("\n");
-    if (lines.length >= lineCount) {
-      return lines;
+
+    if (exact) {
+      if (lines.length === lineCount) {
+        return lines;
+      } else if (lines.length > lineCount) {
+        throw new Error(
+          `Too many lines in ${filePath}, was expecting ${lineCount} and got ${lines.length}`,
+        );
+      }
+    } else {
+      if (lines.length >= lineCount) {
+        return lines;
+      }
     }
     await delay(100);
   }
@@ -217,6 +230,10 @@ export const spawnTestFriendshipBlaster = (
       "5",
       "--debounce",
       "5",
+      "--health-check-interval",
+      "3",
+      "--ill-health-tolerance",
+      "6",
       ...(withAuth ? ["--credentials", "localhost:5000:credentials.txt"] : []),
       // to allow the self-signed HTTPS certificate used for the tests
       "--insecure",

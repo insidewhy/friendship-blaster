@@ -36,6 +36,10 @@ export interface Config {
   debounce: number;
   /// Allow self-signed SSL certificates for container registry
   allowInsecureHttps: boolean;
+  /// How often to check health of docker processes in seconds
+  healthCheckInterval: number;
+  /// How long to tolerate a server being unhealthy for
+  illHealthTolerance: number;
 }
 
 const getAuthConfig = async (
@@ -118,8 +122,22 @@ export const getConfigFromArgv = async (): Promise<Config> => {
       default: 60,
     })
     .option("poll-interval", {
-      describe: "how often to poll container repositories for updates",
+      describe:
+        "how often to poll container repositories for updates in seconds",
       alias: "I",
+      type: "number",
+      default: 60,
+    })
+    .option("health-check-interval", {
+      describe: "how often to check for health of docker containers in seconds",
+      alias: "H",
+      type: "number",
+      default: 60,
+    })
+    .option("ill-health-tolerance", {
+      describe:
+        "how many seconds a container is allowed to be unhealthy before it is terminated",
+      alias: "t",
       type: "number",
       default: 60,
     })
@@ -160,6 +178,10 @@ export const getConfigFromArgv = async (): Promise<Config> => {
     debounce: rawConfig.debounce,
 
     allowInsecureHttps: !!rawConfig.insecure,
+
+    healthCheckInterval: rawConfig["health-check-interval"],
+
+    illHealthTolerance: rawConfig["ill-health-tolerance"],
 
     auth: await getAuthConfig(credentials),
   });

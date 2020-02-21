@@ -1,6 +1,8 @@
 import delay from "delay";
 import { unlink } from "fs";
 import { promisify } from "util";
+import { fill } from "lodash";
+
 import {
   startTestContainerRegistry,
   stopTestContainerRegistry,
@@ -24,8 +26,9 @@ describe("friendship-blaster", () => {
 
   const shutdownFblaster = async (): Promise<void> => {
     if (fblasterProcess) {
-      await fblasterProcess.shutdown();
+      const procCopy = fblasterProcess;
       fblasterProcess = undefined;
+      await procCopy.shutdown();
     }
   };
 
@@ -163,8 +166,8 @@ describe("friendship-blaster", () => {
           buildAndPushTestImage(ECHO_SERVER, TYPE2, UPDATED_VERSION_TYPE2),
         ]);
         await Promise.all([
-          await removeTestImage(ECHO_SERVER, TYPE1, UPDATED_VERSION_TYPE1),
-          await removeTestImage(ECHO_SERVER, TYPE2, UPDATED_VERSION_TYPE2),
+          removeTestImage(ECHO_SERVER, TYPE1, UPDATED_VERSION_TYPE1),
+          removeTestImage(ECHO_SERVER, TYPE2, UPDATED_VERSION_TYPE2),
         ]);
 
         const [lines1, lines2] = await Promise.all([
@@ -220,8 +223,8 @@ describe("friendship-blaster", () => {
           buildAndPushTestImage(ECHO_SERVER, TYPE2, UPDATED_VERSION_TYPE2),
         ]);
         await Promise.all([
-          await removeTestImage(ECHO_SERVER, TYPE1, UPDATED_VERSION_TYPE1),
-          await removeTestImage(ECHO_SERVER, TYPE2, UPDATED_VERSION_TYPE2),
+          removeTestImage(ECHO_SERVER, TYPE1, UPDATED_VERSION_TYPE1),
+          removeTestImage(ECHO_SERVER, TYPE2, UPDATED_VERSION_TYPE2),
         ]);
 
         const [preRestartLines1, preRestartLines2] = await Promise.all([
@@ -257,5 +260,132 @@ describe("friendship-blaster", () => {
         ]);
       });
     });
+  });
+
+  describe("with healthcheck configuration", () => {
+    const HEALTH_SERVER = "unhealthy-server";
+    const VARIANT1 = "2";
+    const VARIANT2 = "3";
+    const INITIAL_VERSION_VARIANT1 = "1.0.0";
+    const INITIAL_VERSION_VARIANT2 = "1.0.0";
+    const UPDATED_VERSION_VARIANT1 = "1.0.1";
+
+    const waitForInitialState = async (): Promise<void> => {
+      // poll for outputs created by container
+      const [lines1, lines2] = await Promise.all([
+        pollFileForLines(`mnt/${VARIANT1}`, 1),
+        pollFileForLines(`mnt/${VARIANT2}`, 1),
+      ]);
+      expect(lines1).toEqual([INITIAL_VERSION_VARIANT1]);
+      expect(lines2).toEqual([INITIAL_VERSION_VARIANT2]);
+    };
+
+    const prepareTestConfigurationDirectory = async (): Promise<void> => {
+      await chdirToTestConfig("health");
+      await Promise.all([
+        pUnlink(FBLASTER_VERSION_FILE).catch(() => {}),
+        buildAndPushTestImage(
+          HEALTH_SERVER,
+          VARIANT1,
+          INITIAL_VERSION_VARIANT1,
+        ),
+        buildAndPushTestImage(
+          HEALTH_SERVER,
+          VARIANT2,
+          INITIAL_VERSION_VARIANT2,
+        ),
+        emptyDirectory("mnt"),
+      ]);
+    };
+
+    const spawnFriendshipBlasterWithHealthConfig = (): void => {
+      fblasterProcess = spawnTestFriendshipBlaster(
+        `unhealthy-server-${VARIANT1},unhealthy-server-${VARIANT2}`,
+        false,
+      );
+    };
+
+    beforeEach(async () => {
+      await startTestContainerRegistry(false);
+      await prepareTestConfigurationDirectory();
+      spawnFriendshipBlasterWithHealthConfig();
+    });
+
+    afterEach(async () => {
+      // must shutdown friendship blaster first, otherwise the "down" won't
+      // work since friendship-blaster's exit process will ensure all
+      // containers are stopped
+      await shutdownFblaster();
+
+      await Promise.all([
+        runCommand(["docker-compose", "down"]),
+        removeTestImage(HEALTH_SERVER, VARIANT1, INITIAL_VERSION_VARIANT1),
+        removeTestImage(HEALTH_SERVER, VARIANT2, INITIAL_VERSION_VARIANT2),
+        removeTestImage(HEALTH_SERVER, VARIANT1, UPDATED_VERSION_VARIANT1),
+      ]);
+    });
+
+    const waitForServersToGetHealthy = async (): Promise<void> => {
+      await waitForInitialState();
+      const [lines1, lines2] = await Promise.all([
+        pollFileForLines(`mnt/${VARIANT1}`, 2, true),
+        pollFileForLines(`mnt/${VARIANT2}`, 3, true),
+      ]);
+      expect(lines1).toEqual(fill(new Array(2), INITIAL_VERSION_VARIANT1));
+      expect(lines2).toEqual(fill(new Array(3), INITIAL_VERSION_VARIANT2));
+    };
+
+    it("restarts servers until they are healthy", async () => {
+      await waitForServersToGetHealthy();
+    });
+
+    it("responds to image update after restarting unhealthy servers", async () => {
+      await waitForServersToGetHealthy();
+
+      await buildAndPushTestImage(
+        HEALTH_SERVER,
+        VARIANT1,
+        UPDATED_VERSION_VARIANT1,
+      );
+
+      const [lines1] = await Promise.all([
+        pollFileForLines(`mnt/${VARIANT1}`, 3, true),
+        pollFileForLines(`mnt/${VARIANT2}`, 3, true),
+      ]);
+      expect(lines1).toEqual([
+        INITIAL_VERSION_VARIANT1,
+        INITIAL_VERSION_VARIANT1,
+        UPDATED_VERSION_VARIANT1,
+      ]);
+    });
+
+    it("restarts updated unhealthy servers", async () => {
+      await waitForServersToGetHealthy();
+
+      await buildAndPushTestImage(
+        HEALTH_SERVER,
+        VARIANT1,
+        UPDATED_VERSION_VARIANT1,
+      );
+
+      await Promise.all([
+        pollFileForLines(`mnt/${VARIANT1}`, 3, true),
+        pollFileForLines(`mnt/${VARIANT2}`, 3, true),
+      ]);
+
+      // make server variant1 unhealthy again
+      await pUnlink(`mnt/${VARIANT1}`);
+
+      // then wait for server variant 1 to become healthy again
+      const [lines1, lines2] = await Promise.all([
+        // goes back up to 2
+        pollFileForLines(`mnt/${VARIANT1}`, 2, true),
+        // increments by one due to the restart of docker-compose
+        pollFileForLines(`mnt/${VARIANT2}`, 4, true),
+      ]);
+
+      expect(lines1).toEqual(fill(new Array(2), UPDATED_VERSION_VARIANT1));
+      expect(lines2).toEqual(fill(new Array(4), INITIAL_VERSION_VARIANT2));
+    }, 130000);
   });
 });
