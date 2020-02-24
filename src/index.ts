@@ -1,21 +1,13 @@
 import YAML from "yaml";
 import path from "path";
 import util from "util";
-import {
-  switchMap,
-  pairwise,
-  startWith,
-  retryWhen,
-  delay,
-  tap,
-  debounceTime,
-} from "rxjs/operators";
-import { Observable } from "rxjs";
+import { switchMap, pairwise, startWith, debounceTime } from "rxjs/operators";
+import { Observable, Subscription } from "rxjs";
 import { exists, readFile, writeFile } from "fs";
 import { once, mapValues } from "lodash";
 
 import { getConfigFromArgv, Config, ImageSet, AuthConfig } from "./config";
-import { spawnProcess, Process } from "./processes";
+import { runCommand, spawnProcess, Process } from "./processes";
 import {
   DockerComposeConfig,
   assertDockerComposeConfig,
@@ -23,9 +15,16 @@ import {
   pullChangedImages,
   assertTaggedImageList,
   loginToContainerRepositories,
+  restartVeryUnhealthyContainers,
 } from "./docker";
+import { getVeryUnhealthyDockerContainers } from "./healthcheck";
 import pollImagesForUpdate from "./pollImagesForUpdate";
-import { isDefined, debugLog, promiseFactoryToObservable } from "./util";
+import {
+  isDefined,
+  debugLog,
+  promiseFactoryToObservable,
+  logErrorAndRetry,
+} from "./util";
 
 const pExists = util.promisify(exists);
 const pReadFile = util.promisify(readFile);
@@ -147,6 +146,38 @@ interface DockerComposeProcess {
 }
 
 /**
+ * Shutdown docker-compose process because docker-compose often fails to shutdown
+ * properly. It leaves containers around etc.
+ */
+async function shutdownDockerCompose(
+  proc: Process,
+  fblasterComposeConfigPath: string,
+  shutdownTimeout: number,
+): Promise<void> {
+  try {
+    await proc.shutdown();
+  } catch (e) {
+    console.warn("Error stopping docker-compose process: %O", e);
+  }
+
+  try {
+    // try to clean up by running the stop command... this is done even after a
+    // clean exit because even in that instance, docker-compose still manages
+    // to leave containers running
+    await runCommand([
+      "docker-compose",
+      "-f",
+      fblasterComposeConfigPath,
+      "stop",
+      "-t",
+      shutdownTimeout.toString(),
+    ]);
+  } catch (e) {
+    console.warn("Error running `docker-compose stop`: %O", e);
+  }
+}
+
+/**
  * Spawn docker compose and return a function that can be used to respawn it
  * with a new configuration.
  */
@@ -160,6 +191,8 @@ function spawnDockerCompose(
   );
 
   let proc: Process | undefined;
+  let healthCheck: Subscription | undefined;
+
   const respawn = async (
     dockerComposeConfig: DockerComposeConfig,
   ): Promise<void> => {
@@ -168,11 +201,19 @@ function spawnDockerCompose(
       dockerComposeConfig,
     );
 
+    if (healthCheck) {
+      healthCheck.unsubscribe();
+    }
     if (proc) {
       const procCopy = proc;
       proc = undefined;
-      await procCopy.shutdown();
+      await shutdownDockerCompose(
+        procCopy,
+        fblasterComposeConfigPath,
+        config.shutdownTimeout,
+      );
     }
+
     proc = spawnProcess([
       "docker-compose",
       "-f",
@@ -181,6 +222,14 @@ function spawnDockerCompose(
       "-t",
       config.shutdownTimeout.toString(),
     ]);
+
+    healthCheck = getVeryUnhealthyDockerContainers(
+      config.healthCheckInterval,
+      config.illHealthTolerance,
+      dockerComposeConfig,
+    )
+      .pipe(restartVeryUnhealthyContainers(config.shutdownTimeout))
+      .subscribe();
   };
 
   respawn(initialDockerComposeConfig);
@@ -188,9 +237,16 @@ function spawnDockerCompose(
   return Object.freeze({
     respawn,
 
-    shutdown(): void {
+    async shutdown(): Promise<void> {
+      if (healthCheck) {
+        healthCheck.unsubscribe();
+      }
       if (proc) {
-        proc.shutdown();
+        await shutdownDockerCompose(
+          proc,
+          fblasterComposeConfigPath,
+          config.shutdownTimeout,
+        );
       }
     },
   });
@@ -269,10 +325,10 @@ const tryToPullImages = (
     await pullChangedImages(auth, prevImages, newPollableImages);
     return newPollableImages;
   }).pipe(
-    tap(null, error => {
-      console.warn("Error pulling changed images, retrying: %O", error);
-    }),
-    retryWhen(e => e.pipe(delay(DOCKER_PULL_RETRY_INTERVAL))),
+    logErrorAndRetry(
+      "Error pulling changed images, retrying: %O",
+      DOCKER_PULL_RETRY_INTERVAL,
+    ),
   );
 };
 
@@ -301,10 +357,10 @@ const tryToRestartDockerCompose = (
       config: dockerComposeConfig,
     };
   }).pipe(
-    tap(null, error => {
-      console.warn("Error restarting docker, retrying: %O", error);
-    }),
-    retryWhen(e => e.pipe(delay(DOCKER_COMPOSE_RESTART_RETRY_INTERVAL))),
+    logErrorAndRetry(
+      "Error restarting docker, retrying: %O",
+      DOCKER_COMPOSE_RESTART_RETRY_INTERVAL,
+    ),
   );
 };
 
@@ -348,6 +404,8 @@ async function getLatestPollableImages(
 
 /**
  * The main entry point to the friendship blaster API.
+ * Returns a promise that resolves to a function which can be used to shutdown
+ * friendship blaster.
  */
 async function runFriendshipBlaster(config: Config): Promise<() => void> {
   if (config.auth) {

@@ -1,0 +1,10 @@
+version: "3"
+services:
+  unhealthy-server-2:
+    image: localhost:5000/unhealthy-server-2:1.0.0
+    volumes:
+      - ./mnt:/mnt
+  unhealthy-server-3:
+    image: localhost:5000/unhealthy-server-3:1.0.0
+    volumes:
+      - ./mnt:/mnt

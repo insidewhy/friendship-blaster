@@ -1,4 +1,6 @@
 import Docker from "dockerode";
+import { OperatorFunction } from "rxjs";
+import { mergeMap } from "rxjs/operators";
 
 import { debugLog } from "./util";
 import { AuthConfig, RepoAuthConfig } from "./config";
@@ -148,7 +150,7 @@ export async function pullChangedImages(
     return matchingPrev!.tag !== tag;
   });
 
-  const docker = new Docker({ socketPath: "/var/run/docker.sock" });
+  const docker = new Docker();
 
   debugLog("Pull changed images: %O", changedImages);
   await Promise.all(
@@ -165,3 +167,37 @@ export async function pullChangedImages(
 
   debugLog("Pulled changed images");
 }
+
+/**
+ * This operator restarts unhealthy containers and ensures that `docker-compose restart`
+ * isn't called for a container while a previous instance of `docker-compose restart` is
+ * running for the same container.
+ */
+export const restartVeryUnhealthyContainers = (
+  shutdownTimeout: number,
+): OperatorFunction<string, void> => {
+  const pendingRestarts: Set<string> = new Set();
+
+  return mergeMap(
+    async (containerLabel: string): Promise<void> => {
+      if (pendingRestarts.has(containerLabel)) {
+        return;
+      }
+
+      pendingRestarts.add(containerLabel);
+      try {
+        console.warn("Restarting unhealthy container: %s", containerLabel);
+        await runCommand([
+          "docker-compose",
+          "restart",
+          "-t",
+          shutdownTimeout.toString(),
+          containerLabel,
+        ]);
+        console.warn("Restarted unhealthy container: %s", containerLabel);
+      } finally {
+        pendingRestarts.delete(containerLabel);
+      }
+    },
+  );
+};

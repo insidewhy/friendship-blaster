@@ -13,12 +13,12 @@ export class Process {
     showStderr?: boolean,
   ) {
     this.shutdownPromise = new Promise<void>((resolve, reject) => {
-      let errorMessage = "";
+      let stderr = "";
       proc.stderr!.on("data", (stderrLine: Buffer) => {
         if (showStderr) {
           console.warn(stderrLine.toString().trimRight());
         }
-        errorMessage += stderrLine;
+        stderr += stderrLine;
       });
 
       proc.on("close", (exitCode: number) => {
@@ -26,7 +26,7 @@ export class Process {
           resolve();
         } else {
           const prefix = `Error running "${commandAndArgs.join(" ")}": `;
-          reject(new Error(prefix + (errorMessage || "Unknown error")));
+          reject(new Error(prefix + (stderr || "Unknown error")));
         }
       });
     });
@@ -76,10 +76,40 @@ export const spawnProcess = (
 };
 
 /**
- * A simpler version of spawnProcess that returns a promise that can be used to
+ * A simpler version of spawnProcess which returns a promise that can be used to
  * wait for it to exit directly.
  */
 export const runCommand = (
   commandAndArgs: string[],
   options: ProcessOptions = {},
 ): Promise<void> => spawnProcess(commandAndArgs, options).wait();
+
+/**
+ * Like child_process.exec but without the overhead of a subshell and
+ * only returns the stdout.
+ */
+export const execCommand = (commandAndArgs: string[]): Promise<string> =>
+  new Promise<string>((resolve, reject) => {
+    const proc = spawn(commandAndArgs[0], commandAndArgs.slice(1), {
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+
+    let stdout = "";
+    proc.stdout!.on("data", (stdoutLine: Buffer) => {
+      stdout += stdoutLine;
+    });
+
+    let stderr = "";
+    proc.stderr!.on("data", (stderrLine: Buffer) => {
+      stderr += stderrLine;
+    });
+
+    proc.on("close", (exitCode: number) => {
+      if (!exitCode) {
+        resolve(stdout);
+      } else {
+        const prefix = `Error running "${commandAndArgs.join(" ")}": `;
+        reject(new Error(prefix + (stderr || "Unknown error")));
+      }
+    });
+  });

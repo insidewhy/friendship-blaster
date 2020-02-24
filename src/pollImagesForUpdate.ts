@@ -3,10 +3,10 @@ import Axios from "axios-observable";
 import semver from "semver";
 import https from "https";
 import { Observable, interval, merge, empty } from "rxjs";
-import { map, filter, catchError, mergeScan, scan } from "rxjs/operators";
+import { map, filter, catchError, scan } from "rxjs/operators";
 
 import { TaggedImage, TaggedImages } from "./docker";
-import { isDefined, debugLog } from "./util";
+import { isDefined, debugLog, switchScan } from "./util";
 import { AuthConfig } from "./config";
 
 const MAX_CONTAINER_TAGS = 999999999;
@@ -74,12 +74,10 @@ function pollImagesForUpdate(
   return merge(
     ...initialPollableImages.map(initialPollableImage =>
       interval(pollFrequency * 1000).pipe(
-        mergeScan(
+        switchScan(
           pollImageForUpdates.bind(null, allowInsecureHttps, auth),
           // initial value for mergeScan accumulator
           initialPollableImage,
-          // max mergeScan concurrency of 1 i.e. switchScan
-          1,
         ),
       ),
     ),

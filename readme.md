@@ -1,7 +1,7 @@
 # friendship blaster
 
-[![build status](https://circleci.com/gh/ohjames/friendship-blaster.png?style=shield)](https://circleci.com/gh/ohjames/friendship-blaster)
-[![Known Vulnerabilities](https://snyk.io/test/github/ohjames/friendship-blaster/badge.svg)](https://snyk.io/test/github/ohjames/friendship-blaster)
+[![build status](https://circleci.com/gh/insidewhy/friendship-blaster.png?style=shield)](https://circleci.com/gh/insidewhy/friendship-blaster)
+[![Known Vulnerabilities](https://snyk.io/test/github/insidewhy/friendship-blaster/badge.svg)](https://snyk.io/test/github/insidewhy/friendship-blaster)
 
 This is a tool to run a system of docker containers using `docker-compose` and
 update them as new image versions are published.
