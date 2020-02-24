@@ -144,16 +144,15 @@ interface DockerComposeProcess {
   shutdown: () => void;
 }
 
-async function restartVeryUnhealthyContainers(
-  containerLabels: string[],
+/**
+ * Restart an unhealthy container using `docker-compose restart`.
+ */
+async function restartVeryUnhealthyContainer(
+  containerLabel: string,
 ): Promise<void> {
-  console.warn("Restarting unhealthy containers: %O", containerLabels);
-  await Promise.all(
-    containerLabels.map(label =>
-      runCommand(["docker-compose", "restart", label]),
-    ),
-  );
-  console.warn("Restarted unhealthy containers: %O", containerLabels);
+  console.warn("Restarting unhealthy container: %s", containerLabel);
+  await runCommand(["docker-compose", "restart", containerLabel]);
+  console.warn("Restarted unhealthy container: %s", containerLabel);
 }
 
 /**
@@ -238,7 +237,7 @@ function spawnDockerCompose(
       config.healthCheckInterval,
       config.illHealthTolerance,
       dockerComposeConfig,
-    ).subscribe(restartVeryUnhealthyContainers);
+    ).subscribe(restartVeryUnhealthyContainer);
   };
 
   respawn(initialDockerComposeConfig);

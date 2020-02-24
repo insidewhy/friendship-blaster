@@ -1,10 +1,11 @@
 import Docker, { ContainerInspectInfo } from "dockerode";
 import delay from "delay";
-import { Observable, interval } from "rxjs";
-import { switchMap, filter, map } from "rxjs/operators";
+import { Observable, interval, merge } from "rxjs";
+import { filter, map, mergeMap } from "rxjs/operators";
 
 import { DockerComposeConfig } from "./docker";
 import {
+  isDefined,
   promiseFactoryToObservable,
   switchScan,
   PromiseFactory,
@@ -12,8 +13,8 @@ import {
 } from "./util";
 import { execCommand } from "./processes";
 
-// How many milliseconds there are in a second
-const SECOND_IN_MS = 1000;
+// The number of milliseconds in a second
+const MILISECS_IN_A_SECOND = 1000;
 
 // Check the container ID every second, it is not available until the container
 // is fully started
@@ -29,7 +30,7 @@ interface ContainerStatus {
   lastHealthyTime: Date;
 }
 
-// The dockerode typings lack the health field
+// The dockerode typings lack the `Health` property.
 type ContainerHealthInfo = ContainerInspectInfo["State"] & {
   Health?: { Status: string };
 };
@@ -58,67 +59,60 @@ async function getContainerIdFromDockerComposeLabel(
 }
 
 const checkContainerDockerHealth = (
-  containerStatuses: ContainerStatus[],
-): PromiseFactory<ContainerStatus[]> => async (): Promise<
-  ContainerStatus[]
-> => {
+  containerStatus: ContainerStatus,
+): PromiseFactory<ContainerStatus> => async (): Promise<ContainerStatus> => {
   const docker = new Docker();
 
-  return Promise.all(
-    containerStatuses.map(async containerStatus => {
-      const containerId =
-        containerStatus.containerId ||
-        (await getContainerIdFromDockerComposeLabel(containerStatus.label));
+  const containerId =
+    containerStatus.containerId ||
+    (await getContainerIdFromDockerComposeLabel(containerStatus.label));
 
-      try {
-        const inspection = await docker.getContainer(containerId).inspect();
-
-        const health = (inspection.State as ContainerHealthInfo).Health;
-        if (!health || health.Status !== "unhealthy") {
-          // the Health property is not defined when the container has no health-check, for
-          // this and all states other than "healthy" (e.g. starting/healthy) assume the
-          // container is healthy
-          return {
-            ...containerStatus,
-            containerId,
-            lastHealthyTime: new Date(),
-          };
-        } else {
-          // preserve the current last known healthy time
-          return { ...containerStatus, containerId };
-        }
-      } catch (e) {
-        if (e.reason === "no such container") {
-          console.warn(
-            "Found stale container while performing healthcheck: %s",
-            containerId,
-          );
-          // Had the wrong container ID, this can happen (rarely) when a
-          // container that was being upgraded and its ID was cached by the
-          // healthcheck before the replacement container with the same label
-          // was started. In this case reset the containerId for the next run.
-          return {
-            label: containerStatus.label,
-            containerId: undefined,
-            lastHealthyTime: new Date(),
-          };
-        } else {
-          throw e;
-        }
-      }
-    }),
-  );
+  try {
+    const inspection = await docker.getContainer(containerId).inspect();
+    const health = (inspection.State as ContainerHealthInfo).Health;
+    if (!health || health.Status !== "unhealthy") {
+      // the Health property is not defined when the container has no
+      // health-check, for this and all states other than "unhealthy" (e.g.
+      // starting/healthy) assume the container is healthy
+      return {
+        ...containerStatus,
+        containerId,
+        lastHealthyTime: new Date(),
+      };
+    } else {
+      // preserve the current last known healthy time
+      return { ...containerStatus, containerId };
+    }
+  } catch (e) {
+    if (e.reason === "no such container") {
+      console.warn(
+        "Found stale container while performing healthcheck: %s",
+        containerId,
+      );
+      // Had the wrong container ID, this can happen (rarely) when a
+      // container that was being upgraded and its ID was cached by the
+      // healthcheck before the replacement container with the same label
+      // was started. In this case reset the containerId for the next run.
+      return {
+        label: containerStatus.label,
+        containerId: undefined,
+        lastHealthyTime: new Date(),
+      };
+    } else {
+      throw e;
+    }
+  }
 };
 
 /**
- * Monitor the containers and emit list of labels of containers that have exceeded
- * the tolerated unhealthy duration.
+ * Monitor the containers and emit labels of containers that have exceeded
+ * `illHealthTolerance`.
  */
 export function getVeryUnhealthyDockerContainers(
   healthPollFrequency: number,
   illHealthTolerance: number,
   dockerComposeConfig: DockerComposeConfig,
-): Observable<string[]> {
+): Observable<string> {
   const initialContainerStatuses = Object.keys(
     dockerComposeConfig.services,
   ).map((label: string) => ({
@@ -127,33 +121,34 @@ export function getVeryUnhealthyDockerContainers(
     lastHealthyTime: new Date(),
   }));
 
-  return interval(healthPollFrequency * SECOND_IN_MS).pipe(
-    switchScan((containerStatuses: ContainerStatus[]) => {
-      return promiseFactoryToObservable(
-        checkContainerDockerHealth(containerStatuses),
-      ).pipe(
-        logErrorAndRetry(
-          "Error monitoring docker container health, retrying: %O",
-          MONITOR_HEALTH_RECOVERY_INTERVAL,
-        ),
+  return merge(initialContainerStatuses).pipe(
+    mergeMap(initialContainerStatus => {
+      return interval(healthPollFrequency * MILISECS_IN_A_SECOND).pipe(
+        switchScan((containerStatus: ContainerStatus) => {
+          return promiseFactoryToObservable(
+            checkContainerDockerHealth(containerStatus),
+          ).pipe(
+            logErrorAndRetry(
+              "Error monitoring docker container health, retrying: %O",
+              MONITOR_HEALTH_RECOVERY_INTERVAL,
+            ),
+          );
+        }, initialContainerStatus),
+
+        map((containerStatus: ContainerStatus): string | undefined => {
+          const now = Date.now();
+          if (
+            (now - containerStatus.lastHealthyTime.getTime()) /
+              MILISECS_IN_A_SECOND >
+            illHealthTolerance
+          ) {
+            return containerStatus.label;
+          } else {
+            return undefined;
+          }
+        }),
+        filter(isDefined),
       );
-    }, initialContainerStatuses),
-
-    map((containerStatuses: ContainerStatus[]): string[] => {
-      const veryUnhealthyContainers: string[] = [];
-      const now = Date.now();
-      for (const containerStatus of containerStatuses) {
-        if (
-          (now - containerStatus.lastHealthyTime.getTime()) / SECOND_IN_MS >
-          illHealthTolerance
-        ) {
-          veryUnhealthyContainers.push(containerStatus.label);
-        }
-      }
-      return veryUnhealthyContainers;
     }),
-
-    // only emit when at least one container has failed the check
-    filter(containerStatuses => !!containerStatuses.length),
   );
 }
