@@ -15,6 +15,7 @@ import {
   pullChangedImages,
   assertTaggedImageList,
   loginToContainerRepositories,
+  restartVeryUnhealthyContainers,
 } from "./docker";
 import { getVeryUnhealthyDockerContainers } from "./healthcheck";
 import pollImagesForUpdate from "./pollImagesForUpdate";
@@ -145,17 +146,6 @@ interface DockerComposeProcess {
 }
 
 /**
- * Restart an unhealthy container using `docker-compose restart`.
- */
-async function restartVeryUnhealthyContainer(
-  containerLabel: string,
-): Promise<void> {
-  console.warn("Restarting unhealthy container: %s", containerLabel);
-  await runCommand(["docker-compose", "restart", containerLabel]);
-  console.warn("Restarted unhealthy container: %s", containerLabel);
-}
-
-/**
  * Shutdown docker-compose process because docker-compose often fails to shutdown
  * properly. It leaves containers around etc.
  */
@@ -237,7 +227,9 @@ function spawnDockerCompose(
       config.healthCheckInterval,
       config.illHealthTolerance,
       dockerComposeConfig,
-    ).subscribe(restartVeryUnhealthyContainer);
+    )
+      .pipe(restartVeryUnhealthyContainers(config.shutdownTimeout))
+      .subscribe();
   };
 
   respawn(initialDockerComposeConfig);
