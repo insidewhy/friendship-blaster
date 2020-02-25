@@ -2,11 +2,11 @@ import { AxiosRequestConfig } from "axios";
 import Axios from "axios-observable";
 import semver from "semver";
 import https from "https";
-import { Observable, interval, merge, empty } from "rxjs";
+import { Observable, merge, empty } from "rxjs";
 import { map, filter, catchError, scan } from "rxjs/operators";
 
 import { TaggedImage, TaggedImages } from "./docker";
-import { isDefined, debugLog, switchScan } from "./util";
+import { isDefined, debugLog, switchScan, interruptableInterval } from "./util";
 import { AuthConfig } from "./config";
 
 const MAX_CONTAINER_TAGS = 999999999;
@@ -21,6 +21,7 @@ function pollImageForUpdates(
   allowInsecureHttps: boolean,
   auth: AuthConfig | undefined,
   pollableImage: TaggedImage,
+  pollDueToSignal: boolean,
 ): Observable<TaggedImage> {
   const tagUrl = `https://${pollableImage.repoUrl}/v2/${pollableImage.image}/tags/list`;
   const axiosOptions: AxiosRequestConfig = {
@@ -32,7 +33,12 @@ function pollImageForUpdates(
     axiosOptions.httpsAgent = new https.Agent({ rejectUnauthorized: false });
   }
 
-  debugLog("look for update to - %O", pollableImage);
+  if (pollDueToSignal) {
+    console.log("Polling for update due to signal: %O");
+  } else {
+    debugLog("Polling for update on schedule: %O", pollableImage);
+  }
+
   // curl -H "Accept: application/json" --user solas:password -L https://solas.azurecr.io/v2/solas-dns/tags/list\?n=9000
   return Axios.get(tagUrl, axiosOptions).pipe(
     map(result => {
@@ -73,7 +79,7 @@ function pollImagesForUpdate(
 ): Observable<TaggedImages> {
   return merge(
     ...initialPollableImages.map(initialPollableImage =>
-      interval(pollFrequency * 1000).pipe(
+      interruptableInterval(pollFrequency * 1000).pipe(
         switchScan(
           pollImageForUpdates.bind(null, allowInsecureHttps, auth),
           // initial value for mergeScan accumulator

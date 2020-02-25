@@ -1,6 +1,7 @@
 import YAML from "yaml";
 import path from "path";
 import util from "util";
+import md5 from "md5";
 import { switchMap, pairwise, startWith, debounceTime } from "rxjs/operators";
 import { Observable, Subscription } from "rxjs";
 import { exists, readFile, writeFile } from "fs";
@@ -30,6 +31,8 @@ const pExists = util.promisify(exists);
 const pReadFile = util.promisify(readFile);
 const pWriteFile = util.promisify(writeFile);
 
+const DOCKER_COMPOSE_YML = "docker-compose.yml";
+
 // friendship-blaster calls docker-compose, not with the original docker-compose.yml
 // but this file which is a rewritten version of the original. This allows
 // friendship-blaster to modify the versions.
@@ -45,6 +48,25 @@ declare module "yaml" {
 }
 
 /**
+ * Signal a running version of friendship-blaster to poll for updates.
+ */
+async function runSignalPoll(directoryPath: string): Promise<void> {
+  console.log("Signalling existing friendship-blaster to poll for updates");
+  try {
+    const containerName = `fblaster-${md5(directoryPath)}`;
+    await spawnProcess(["docker", "kill", "-s", "SIGUSR2", containerName], {
+      showStderr: true,
+    }).wait();
+    console.log("Signalled existing friendship-blaster to poll for updates");
+  } catch (e) {
+    console.warn(
+      "Failed to signal existing friendship-blaster to poll for updates",
+    );
+    process.exit(1);
+  }
+}
+
+/**
  * It returns the TaggedImage objects representing the repositories which match
  * the configured pollable images from the parsed docker-compose.yml.
  */
@@ -55,7 +77,7 @@ async function getPollableImages(
   const pollableImages = Object.values(dockerComposeConfig.services)
     .map(service => {
       if (typeof service !== "object") {
-        throw new Error("Invalid service found in docker-compose.yml");
+        throw new Error(`Invalid service found in ${DOCKER_COMPOSE_YML}`);
       }
 
       const imageStr = (service as { image?: string }).image;
@@ -118,7 +140,7 @@ function subscribeToImageUpdates(
 async function getDockerComposeConfig(
   directoryPath: string,
 ): Promise<DockerComposeConfig> {
-  const composeFilePath = path.join(directoryPath, "docker-compose.yml");
+  const composeFilePath = path.join(directoryPath, DOCKER_COMPOSE_YML);
   if (!(await pExists(composeFilePath))) {
     throw new Error(`${composeFilePath} must exit`);
   }
@@ -498,12 +520,22 @@ export default runFriendshipBlaster;
 async function main(): Promise<void> {
   try {
     const config = await getConfigFromArgv();
-    const onExit = once(await runFriendshipBlaster(config));
 
-    process.on("exit", onExit);
-    process.on("SIGINT", onExit);
-    process.on("SIGTERM", onExit);
-    process.on("uncaughtException", onExit);
+    if (config.signalPoll) {
+      await runSignalPoll(config.directory);
+    } else {
+      if (!config.images.size) {
+        console.warn("Must provide one of --images/-i or --signal-poll/-S");
+        process.exit(1);
+      }
+
+      const onExit = once(await runFriendshipBlaster(config));
+
+      process.on("exit", onExit);
+      process.on("SIGINT", onExit);
+      process.on("SIGTERM", onExit);
+      process.on("uncaughtException", onExit);
+    }
   } catch (e) {
     console.warn(e.message);
     process.exit(1);

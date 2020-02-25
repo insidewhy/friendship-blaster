@@ -216,7 +216,7 @@ export const pollFileForLines = async (
 // spawn friendship-blaster inside of a docker container.
 export const spawnTestFriendshipBlaster = (
   imageArg: string,
-  withAuth: boolean,
+  { withAuth, pollInterval = 5 }: { withAuth: boolean; pollInterval?: number },
 ): Process =>
   spawnProcess(
     [
@@ -227,7 +227,7 @@ export const spawnTestFriendshipBlaster = (
       "--shutdown-timeout",
       "2",
       "--poll-interval",
-      "5",
+      pollInterval.toString(),
       "--debounce",
       "5",
       "--health-check-interval",
@@ -243,3 +243,9 @@ export const spawnTestFriendshipBlaster = (
       showStderr: true,
     },
   );
+
+export const spawnFriendshipBlasterSignaller = (): Promise<void> =>
+  spawnProcess([FRIENDSHIP_BLASTER_BIN, "--signal-poll"], {
+    // showStdout: true,
+    showStderr: true,
+  }).wait();

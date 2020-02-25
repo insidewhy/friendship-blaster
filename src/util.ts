@@ -6,8 +6,19 @@ import {
   OperatorFunction,
   MonoTypeOperatorFunction,
   pipe,
+  interval,
+  merge,
 } from "rxjs";
-import { switchMap, mergeScan, tap, retryWhen, delay } from "rxjs/operators";
+import {
+  switchMap,
+  mergeScan,
+  tap,
+  retryWhen,
+  delay,
+  startWith,
+  mapTo,
+  map,
+} from "rxjs/operators";
 
 /**
  * Returns true if the argument is defined and narrows the type accordingly.
@@ -51,4 +62,30 @@ export const logErrorAndRetry = <T>(
       console.warn(logFormat, error);
     }),
     retryWhen(e => e.pipe(delay(retryAfterSeconds))),
+  );
+
+/**
+ * Return an observable that emits whenever the process receives the signal
+ * SIGUSR2.
+ */
+export const observeSignalUSR2 = (): Observable<void> =>
+  new Observable(observer => {
+    process.on("SIGUSR2", () => {
+      observer.next();
+    });
+  });
+
+/**
+ * Return an observable that emits on an interval but can be forced to emit
+ * when receiving a SIGUSR2. When receiving a signal, the poll interval resets.
+ * The observable emits true when there was an signal and false at intervals.
+ */
+export const interruptableInterval = (period: number): Observable<boolean> =>
+  observeSignalUSR2().pipe(
+    mapTo(true),
+    startWith(false),
+    switchMap(signaled =>
+      signaled ? merge(interval(period), of(-1)) : interval(period),
+    ),
+    map(sequence => sequence < 0),
   );

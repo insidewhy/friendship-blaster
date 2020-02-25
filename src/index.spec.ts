@@ -13,6 +13,7 @@ import {
   spawnTestFriendshipBlaster,
   removeTestImage,
   loginToTestContainerRegistry,
+  spawnFriendshipBlasterSignaller,
 } from "./testUtils";
 import { Process, runCommand } from "./processes";
 import { FBLASTER_VERSION_FILE } from ".";
@@ -51,10 +52,11 @@ describe("friendship-blaster", () => {
 
     const spawnFriendshipBlasterWithSimpleConfig = (
       withAuth: boolean,
+      pollInterval = 5,
     ): void => {
       fblasterProcess = spawnTestFriendshipBlaster(
         "echo-server-type1,echo-server-type2",
-        withAuth,
+        { withAuth, pollInterval },
       );
     };
 
@@ -260,6 +262,35 @@ describe("friendship-blaster", () => {
         ]);
       });
     });
+
+    describe("responds to SIGUSR2 signal", () => {
+      beforeEach(async () => {
+        await startTestContainerRegistry(false);
+        await prepareTestConfigurationDirectory();
+        // really large poll interval the test can be sure all polls came from the signal
+        spawnFriendshipBlasterWithSimpleConfig(false, 999999);
+      });
+
+      it("by polling for updates", async () => {
+        if (process.env.LOCAL_COMPOSE) {
+          console.warn("SIGUSR2 tests do not work when LOCAL_COMPOSE is set");
+          return;
+        }
+
+        await waitForInitialState();
+        await buildAndPushTestImage(ECHO_SERVER, TYPE1, UPDATED_VERSION_TYPE1);
+        await removeTestImage(ECHO_SERVER, TYPE1, UPDATED_VERSION_TYPE1);
+        await delay(2000);
+        await spawnFriendshipBlasterSignaller();
+
+        const [lines1, lines2] = await Promise.all([
+          pollFileForLines("mnt/type1", 2),
+          pollFileForLines("mnt/type2", 2),
+        ]);
+        expect(lines1).toEqual([INITIAL_VERSION_TYPE1, UPDATED_VERSION_TYPE1]);
+        expect(lines2).toEqual([INITIAL_VERSION_TYPE2, INITIAL_VERSION_TYPE2]);
+      }, 150000);
+    });
   });
 
   describe("with healthcheck configuration", () => {
@@ -301,7 +332,7 @@ describe("friendship-blaster", () => {
     const spawnFriendshipBlasterWithHealthConfig = (): void => {
       fblasterProcess = spawnTestFriendshipBlaster(
         `unhealthy-server-${VARIANT1},unhealthy-server-${VARIANT2}`,
-        false,
+        { withAuth: false },
       );
     };
 
