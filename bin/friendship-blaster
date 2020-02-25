@@ -5,6 +5,7 @@ VERSION=1.0.0-beta.4
 input_args=("$@")
 fblaster_args=()
 docker_args=(--rm -v /var/run/docker.sock:/var/run/docker.sock -e DEBUG)
+has_signal=false
 
 # find the directory if it is specified, otherwise set the -d flag according
 # to the current working directory, also detect and remove --host-net when
@@ -16,13 +17,30 @@ for i in ${!input_args[@]} ; do
   else
     if [ $arg = -d -o $arg = --directory ] ; then
       directory="${input_args[$i + 1]}"
+    elif [ $arg = -S -o $arg = --signal-poll ] ; then
+      has_signal=true
     fi
     fblaster_args+=("$arg")
   fi
 done
+
 if [ -z $directory ] ; then
   fblaster_args+=(-d $PWD)
   directory=$PWD
+fi
+
+if [ $has_signal = false ] ; then
+  # name the container with the md5sum so it can be used when signalling
+  # friendship-blaster via --signal-poll, but don't do this when using the
+  # --signal-poll argument itself or docker won't be able to start the signal
+  # polling container with a duplicate name.
+  md5sum_output=$(echo -n $directory | md5sum)
+  if [ $? -ne 0 ] ; then
+    echo "md5sum command must be installed to use friendship-blaster"
+    exit 1
+  fi
+  dir_hash=${md5sum_output%% *}
+  docker_args+=(--name fblaster-$dir_hash)
 fi
 
 # ensure a relative path for --credentials/-c still works

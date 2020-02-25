@@ -40,6 +40,8 @@ export interface Config {
   healthCheckInterval: number;
   /// How long to tolerate a server being unhealthy for
   illHealthTolerance: number;
+  /// Set to tell friendship-blaster to signal an existing instance rather than run
+  signalPoll: boolean;
 }
 
 const getAuthConfig = async (
@@ -102,7 +104,6 @@ export const getConfigFromArgv = async (): Promise<Config> => {
       describe: "comma separated list of images to watch for updates",
       type: "string",
       alias: "i",
-      required: true,
     })
     .option("shutdown-timeout", {
       describe: "how long to wait in seconds for docker container to shut down",
@@ -146,6 +147,12 @@ export const getConfigFromArgv = async (): Promise<Config> => {
       alias: "k",
       type: "boolean",
     })
+    .option("signal-poll", {
+      describe:
+        "Send signal to existing friendship-blaster to force an update poll",
+      alias: "S",
+      type: "boolean",
+    })
     .alias("h", "help")
     .help();
 
@@ -166,7 +173,7 @@ export const getConfigFromArgv = async (): Promise<Config> => {
   }
 
   return Object.freeze({
-    images: Object.freeze(new Set(rawConfig.images.split(/\s*,\s*/))),
+    images: Object.freeze(new Set((rawConfig.images || "").split(/\s*,\s*/))),
 
     // how long to wait for containers to stop in seconds
     shutdownTimeout: rawConfig["shutdown-timeout"] || 10,
@@ -184,6 +191,8 @@ export const getConfigFromArgv = async (): Promise<Config> => {
     illHealthTolerance: rawConfig["ill-health-tolerance"],
 
     auth: await getAuthConfig(credentials),
+
+    signalPoll: !!rawConfig["signal-poll"],
   });
 };
 
