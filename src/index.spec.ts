@@ -14,6 +14,8 @@ import {
   removeTestImage,
   loginToTestContainerRegistry,
   spawnFriendshipBlasterSignaller,
+  getMatchingDescendentProc,
+  getMatchingProc,
 } from "./testUtils";
 import { Process, runCommand } from "./processes";
 import { FBLASTER_VERSION_FILE } from ".";
@@ -260,6 +262,42 @@ describe("friendship-blaster", () => {
           UPDATED_VERSION_TYPE2,
           UPDATED_VERSION_TYPE2,
         ]);
+      });
+
+      it("restarts docker-compose when it exits unexpectedly", async () => {
+        await waitForInitialState();
+
+        // this pid will not be a descendent of fblasterProcess as it will be
+        // executed via docker (except when `yarn test-dev` is used)
+        const pid = await getMatchingProc(
+          args =>
+            args.length > 1 &&
+            /f(?:riendship-)?blaster\/(?:.*\/)?lib\/index.js$/.test(args[1]),
+        );
+        expect(pid).not.toEqual(0);
+
+        // grab the docker-compose that fblaster spawned and kill it
+        const dockerComposePid = await getMatchingDescendentProc(
+          pid,
+          args => args.length > 1 && /docker-compose$/.test(args[1]),
+        );
+        expect(dockerComposePid).not.toEqual(0);
+
+        try {
+          process.kill(dockerComposePid);
+        } catch (e) {
+          // when not running via test-dev, root permissions are needed to kill
+          // the docker-compose process running inside of the container
+          await runCommand(["sudo", "kill", dockerComposePid.toString()]);
+        }
+
+        // ensure that docker-compose was restarted by fblaster
+        const [lines1, lines2] = await Promise.all([
+          pollFileForLines("mnt/type1", 2),
+          pollFileForLines("mnt/type2", 2),
+        ]);
+        expect(lines1).toEqual([INITIAL_VERSION_TYPE1, INITIAL_VERSION_TYPE1]);
+        expect(lines2).toEqual([INITIAL_VERSION_TYPE2, INITIAL_VERSION_TYPE2]);
       });
     });
 

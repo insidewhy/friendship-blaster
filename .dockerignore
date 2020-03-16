@@ -4,6 +4,7 @@ bin
 **/*.spec.ts
 src/testUtils.ts
 src/buildImage.ts
+src/index.spec.ts
 test
 readme.md
 jest.conf.json
