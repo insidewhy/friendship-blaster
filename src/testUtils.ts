@@ -5,7 +5,7 @@ import delay from "delay";
 import { mkdir, exists, readFile, unlink } from "fs";
 import Docker from "dockerode";
 
-import { runCommand, spawnProcess, Process } from "./processes";
+import { runCommand, spawnProcess, Process, execCommand } from "./processes";
 import { FBLASTER_COMPOSE_FILE } from ".";
 
 const pRimraf = util.promisify(rimraf);
@@ -249,3 +249,69 @@ export const spawnFriendshipBlasterSignaller = (): Promise<void> =>
     // showStdout: true,
     showStderr: true,
   }).wait();
+
+type ArgMatcher = (args: string[]) => boolean;
+
+/**
+ * Get arguments of all pids that match `argMatcher` or 0 if there are no
+ * matches or more than one match.
+ */
+export const getMatchingProc = async (
+  argMatcher: ArgMatcher,
+): Promise<number> => {
+  const psOutput = await execCommand(["ps", "-eo", "pid,args"]);
+
+  const matchingProcs = psOutput
+    .trim()
+    .split("\n")
+    .slice(1)
+    .map(line => {
+      const [pidStr, ...args] = line.trim().split(/\s+/);
+      return { pid: parseInt(pidStr), args };
+    })
+    .filter(({ args }) => argMatcher(args));
+
+  return matchingProcs.length === 1 ? matchingProcs[0].pid : 0;
+};
+
+/**
+ * Get arguments of all pids that match `argMatcher` and are descendents of
+ * `pid` or 0 if there are no matches or more than one match.
+ */
+export const getMatchingDescendentProc = async (
+  parentPid: number,
+  argMatcher: ArgMatcher,
+): Promise<number> => {
+  const psOutput = await execCommand(["ps", "-eo", "pid,ppid,args"]);
+  const pidMap: Map<number, number> = new Map();
+  const matchingProcs = psOutput
+    .trim()
+    .split("\n")
+    .slice(1)
+    .map(line => {
+      const [pidStr, ppidStr, ...args] = line.trim().split(/\s+/);
+      const pid = parseInt(pidStr);
+      const ppid = parseInt(ppidStr);
+      pidMap.set(pid, ppid);
+      return { pid, args };
+    })
+    .filter(pidInfo => {
+      if (!argMatcher(pidInfo.args)) {
+        return false;
+      }
+
+      // check if pid is a descendent of parentPid
+      for (
+        let nextPid = pidInfo.pid;
+        nextPid !== 0;
+        nextPid = pidMap.get(nextPid) || 0
+      ) {
+        if (nextPid === parentPid) {
+          return true;
+        }
+      }
+      return false;
+    });
+
+  return matchingProcs.length === 1 ? matchingProcs[0].pid : 0;
+};

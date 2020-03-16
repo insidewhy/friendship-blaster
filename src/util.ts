@@ -11,6 +11,7 @@ import {
 } from "rxjs";
 import {
   switchMap,
+  switchAll,
   mergeScan,
   tap,
   retryWhen,
@@ -82,10 +83,8 @@ export const observeSignalUSR2 = (): Observable<void> =>
  */
 export const interruptableInterval = (period: number): Observable<boolean> =>
   observeSignalUSR2().pipe(
-    mapTo(true),
-    startWith(false),
-    switchMap(signaled =>
-      signaled ? merge(interval(period), of(-1)) : interval(period),
-    ),
+    mapTo(merge(interval(period), of(-1))),
+    startWith(interval(period)),
+    switchAll(),
     map(sequence => sequence < 0),
   );

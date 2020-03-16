@@ -3,7 +3,7 @@ import path from "path";
 import util from "util";
 import md5 from "md5";
 import { switchMap, pairwise, startWith, debounceTime } from "rxjs/operators";
-import { Observable, Subscription } from "rxjs";
+import { Observable, Subscription, from as observableFromPromise } from "rxjs";
 import { exists, readFile, writeFile } from "fs";
 import { once, mapValues } from "lodash";
 
@@ -160,8 +160,9 @@ type RespawnDockerCompose = (
  * A simple interface that can be used to respawn and shutdown a docker-compose
  * process.
  */
-interface DockerComposeProcess {
-  // Shut down existing process and then start new one with new configuration
+interface DockerComposeSpawner {
+  // Shut down existing process (when docker-compose is already running) then
+  // start new docker-compose process with given configuration
   respawn: RespawnDockerCompose;
 
   shutdown: () => void;
@@ -203,10 +204,7 @@ async function shutdownDockerCompose(
  * Spawn docker compose and return a function that can be used to respawn it
  * with a new configuration.
  */
-function spawnDockerCompose(
-  config: Config,
-  initialDockerComposeConfig: DockerComposeConfig,
-): DockerComposeProcess {
+function getDockerComposeSpawner(config: Config): DockerComposeSpawner {
   const fblasterComposeConfigPath = path.join(
     config.directory,
     FBLASTER_COMPOSE_FILE,
@@ -214,6 +212,7 @@ function spawnDockerCompose(
 
   let proc: Process | undefined;
   let healthCheck: Subscription | undefined;
+  let procMonitor: Subscription | undefined;
 
   const respawn = async (
     dockerComposeConfig: DockerComposeConfig,
@@ -225,6 +224,9 @@ function spawnDockerCompose(
 
     if (healthCheck) {
       healthCheck.unsubscribe();
+    }
+    if (procMonitor) {
+      procMonitor.unsubscribe();
     }
     if (proc) {
       const procCopy = proc;
@@ -252,9 +254,17 @@ function spawnDockerCompose(
     )
       .pipe(restartVeryUnhealthyContainers(config.shutdownTimeout))
       .subscribe();
-  };
 
-  respawn(initialDockerComposeConfig);
+    const restartExitedProcess = (): void => {
+      proc = undefined;
+      respawn(dockerComposeConfig);
+    };
+    procMonitor = observableFromPromise(proc.wait()).subscribe(
+      // ensure docker-compose is restarted whether it exited with a zero or non-zero exit code
+      restartExitedProcess,
+      restartExitedProcess,
+    );
+  };
 
   return Object.freeze({
     respawn,
@@ -262,6 +272,9 @@ function spawnDockerCompose(
     async shutdown(): Promise<void> {
       if (healthCheck) {
         healthCheck.unsubscribe();
+      }
+      if (procMonitor) {
+        procMonitor.unsubscribe();
       }
       if (proc) {
         await shutdownDockerCompose(
@@ -365,14 +378,14 @@ interface DockerComposeConfigAndImages {
  */
 const tryToRestartDockerCompose = (
   dockerComposeConfig: DockerComposeConfig,
-  dockerComposeProc: DockerComposeProcess,
+  respawnDockerCompose: RespawnDockerCompose,
   newPollableImages: TaggedImages,
 ): Observable<DockerComposeConfigAndImages> => {
   return promiseFactoryToObservable(async () => {
     await respawnDockerComposeWithNewConfig(
       newPollableImages,
       dockerComposeConfig,
-      dockerComposeProc.respawn,
+      respawnDockerCompose,
     );
     return {
       images: newPollableImages,
@@ -459,7 +472,9 @@ async function runFriendshipBlaster(config: Config): Promise<() => void> {
           pureDockerComposeConfig,
         );
 
-  const dockerComposeProc = spawnDockerCompose(config, dockerComposeConfig);
+  const dockerComposeSpawner = getDockerComposeSpawner(config);
+
+  dockerComposeSpawner.respawn(dockerComposeConfig);
 
   console.info("Run initial images: %O", pollableImages);
 
@@ -484,7 +499,7 @@ async function runFriendshipBlaster(config: Config): Promise<() => void> {
         tryToRestartDockerCompose.bind(
           null,
           dockerComposeConfig,
-          dockerComposeProc,
+          dockerComposeSpawner.respawn,
         ),
       ),
 
@@ -506,7 +521,7 @@ async function runFriendshipBlaster(config: Config): Promise<() => void> {
     );
 
   return (): void => {
-    dockerComposeProc.shutdown();
+    dockerComposeSpawner.shutdown();
     pollSubscription.unsubscribe();
   };
 }
