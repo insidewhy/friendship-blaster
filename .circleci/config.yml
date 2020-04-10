@@ -38,6 +38,8 @@ jobs:
           key: v1-dependencies-{{ checksum "yarn.lock" }}
       - run: yarn build-code
       - run: yarn build-image
+      - run: yarn lint
+      - run: yarn validate-prettiness
       - run: yarn test
 
 workflows:
