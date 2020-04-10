@@ -55,8 +55,8 @@ docker_args+=(--workdir=$directory)
 # *host system* not the docker-compose container.
 
 if [ -n "$LOCAL_COMPOSE" ] ; then
-  exec node "$(dirname $0)/../lib/index.js" "${fblaster_args[@]}"
+  exec node "$(dirname $0)/../dist/index.js" "${fblaster_args[@]}"
 else
   exec docker run "${docker_args[@]}" -v $directory:$directory \
-    xlos/friendship-blaster:$VERSION /usr/bin/node /home/fblaster/lib/index.js "${fblaster_args[@]}"
+    xlos/friendship-blaster:$VERSION /usr/bin/node /home/fblaster/dist/index.js "${fblaster_args[@]}"
 fi

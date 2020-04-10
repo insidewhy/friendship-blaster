@@ -4,7 +4,7 @@
     "noImplicitAny": false,
     "esModuleInterop": true,
     "module": "commonjs",
-    "outDir": "./lib",
+    "outDir": "./dist",
     "allowJs": true,
     "preserveWatchOutput": true,
     "forceConsistentCasingInFileNames": true,

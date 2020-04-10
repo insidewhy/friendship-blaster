@@ -272,7 +272,7 @@ describe("friendship-blaster", () => {
         const pid = await getMatchingProc(
           args =>
             args.length > 1 &&
-            /f(?:riendship-)?blaster\/(?:.*\/)?lib\/index.js$/.test(args[1]),
+            /f(?:riendship-)?blaster\/(?:.*\/)?dist\/index.js$/.test(args[1]),
         );
         expect(pid).not.toEqual(0);
 
