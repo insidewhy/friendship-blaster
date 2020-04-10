@@ -2,10 +2,21 @@
   "name": "friendship-blaster",
   "version": "1.0.0-beta.6",
   "description": "simple docker-compose based deployments",
-  "main": "dist/index.js",
   "author": "insidewhy <github@chilon.net>",
-  "license": "MIT",
-  "private": true,
+  "license": "ISC",
+  "keywords": [
+    "containers",
+    "deployment",
+    "docker",
+    "docker-compose",
+    "edge",
+    "edgeserver"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/insidewhy/friendship-blaster.git"
+  },
+  "main": "dist/index.js",
   "scripts": {
     "build": "yarn build-code && yarn build-image",
     "build-code": "tsc",
@@ -17,7 +28,8 @@
     "test-dev": "yarn build-code && LOCAL_COMPOSE=true yarn test",
     "typecheck": "yarn build-code --noEmit",
     "make-prettier": "prettier --write '**/*.{ts,json,md}'",
-    "validate-prettiness": "prettier -c '**/*.{ts,json,md}'"
+    "validate-prettiness": "prettier -c '**/*.{ts,json,md}'",
+    "validate": "yarn lint && yarn validate-prettiness && yarn test"
   },
   "husky": {
     "hooks": {
