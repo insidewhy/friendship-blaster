@@ -60,7 +60,7 @@
     "@types/dockerode": "2.5.26",
     "@types/jest": "24.9.1",
     "@types/lodash": "4.14.149",
-    "@types/md5": "2.1.33",
+    "@types/md5": "2.2.0",
     "@types/node": "13.11.1",
     "@types/rimraf": "2.0.3",
     "@types/semver": "6.2.1",
