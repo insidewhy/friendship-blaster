@@ -57,7 +57,7 @@
   "devDependencies": {
     "@types/debug": "4.1.5",
     "@types/delay": "3.1.0",
-    "@types/dockerode": "2.5.26",
+    "@types/dockerode": "2.5.27",
     "@types/jest": "24.9.1",
     "@types/lodash": "4.14.149",
     "@types/md5": "2.1.33",
