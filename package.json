@@ -65,7 +65,7 @@
     "@types/rimraf": "2.0.4",
     "@types/semver": "6.2.1",
     "@types/yaml": "1.2.0",
-    "@types/yargs": "13.0.3",
+    "@types/yargs": "13.0.8",
     "@typescript-eslint/eslint-plugin": "2.3.0",
     "@typescript-eslint/parser": "2.3.0",
     "eslint": "6.4.0",
