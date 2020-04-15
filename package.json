@@ -47,7 +47,7 @@
     "lodash": "^4.17.15",
     "md5": "^2.2.1",
     "rxjs": "^6.5.3",
-    "semver": "^6.3.0",
+    "semver": "^7.0.0",
     "yaml": "^1.7.2",
     "yargs": "^15.0.1"
   },
@@ -63,7 +63,7 @@
     "@types/md5": "2.2.0",
     "@types/node": "13.11.1",
     "@types/rimraf": "2.0.4",
-    "@types/semver": "6.2.1",
+    "@types/semver": "7.1.0",
     "@types/yaml": "1.2.0",
     "@types/yargs": "13.0.3",
     "@typescript-eslint/eslint-plugin": "2.3.0",
