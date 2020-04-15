@@ -62,7 +62,7 @@
     "@types/lodash": "4.14.149",
     "@types/md5": "2.2.0",
     "@types/node": "13.11.1",
-    "@types/rimraf": "2.0.4",
+    "@types/rimraf": "3.0.0",
     "@types/semver": "7.1.0",
     "@types/yaml": "1.2.0",
     "@types/yargs": "13.0.8",
@@ -74,7 +74,7 @@
     "jest": "24.9.0",
     "prettier": "1.19.1",
     "pretty-quick": "2.0.1",
-    "rimraf": "3.0.0",
+    "rimraf": "3.0.2",
     "typescript": "3.8.3"
   }
 }
