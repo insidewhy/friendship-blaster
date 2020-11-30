@@ -75,6 +75,7 @@ describe("friendship-blaster", () => {
     const prepareTestConfigurationDirectory = async (): Promise<void> => {
       await chdirToTestConfig("simple");
       await Promise.all([
+        // eslint-disable-next-line @typescript-eslint/no-empty-function
         pUnlink(FBLASTER_VERSION_FILE).catch(() => {}),
         buildAndPushTestImage(ECHO_SERVER, TYPE1, INITIAL_VERSION_TYPE1),
         buildAndPushTestImage(ECHO_SERVER, TYPE2, INITIAL_VERSION_TYPE2),
@@ -352,6 +353,7 @@ describe("friendship-blaster", () => {
     const prepareTestConfigurationDirectory = async (): Promise<void> => {
       await chdirToTestConfig("health");
       await Promise.all([
+        // eslint-disable-next-line @typescript-eslint/no-empty-function
         pUnlink(FBLASTER_VERSION_FILE).catch(() => {}),
         buildAndPushTestImage(
           HEALTH_SERVER,
