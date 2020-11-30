@@ -197,5 +197,6 @@ export const getConfigFromArgv = async (): Promise<Config> => {
  * Read the software version from `package.json`.
  */
 export const getVersion = once((): string => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
   return require(path.join(__dirname, "..", "package.json")).version;
 });

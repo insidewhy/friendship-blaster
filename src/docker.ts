@@ -120,10 +120,13 @@ export const waitForDocker = (docker: Docker, stream: unknown): Promise<void> =>
   new Promise((resolve) => docker.modem.followProgress(stream, resolve));
 
 /**
- * Returns a type of {} because dockerode typings are broken and also
- * not extendable.
+ * Returns a type of Record<string, unknown> because dockerode typings are
+ * broken and also not extendable.
  */
-const getAuthOptions = (repoUrl: string, auth?: AuthConfig): {} => {
+const getAuthOptions = (
+  repoUrl: string,
+  auth?: AuthConfig,
+): Record<string, unknown> => {
   const repoAuth = auth?.get(repoUrl);
   if (!repoAuth) {
     return {};
