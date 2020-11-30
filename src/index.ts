@@ -42,11 +42,6 @@ export const FBLASTER_VERSION_FILE = "fblaster-versions.yml";
 const DOCKER_PULL_RETRY_INTERVAL = 3000;
 const DOCKER_COMPOSE_RESTART_RETRY_INTERVAL = 3000;
 
-declare module "yaml" {
-  // the type declaraction incorrectly specifies the return type as "any"
-  export function parse(file: string): Promise<unknown>;
-}
-
 /**
  * Signal a running version of friendship-blaster to poll for updates.
  */
