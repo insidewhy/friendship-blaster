@@ -61,7 +61,7 @@
     "@types/jest": "26.0.15",
     "@types/lodash": "4.14.149",
     "@types/md5": "2.2.1",
-    "@types/node": "13.13.2",
+    "@types/node": "13.13.33",
     "@types/rimraf": "3.0.0",
     "@types/semver": "7.3.4",
     "@types/yaml": "1.2.0",
