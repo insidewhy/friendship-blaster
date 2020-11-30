@@ -54,7 +54,7 @@ const getAuthConfig = async (
   const authConfig: AuthConfig = new Map();
 
   await Promise.all(
-    credentialArgs.map(async credentials => {
+    credentialArgs.map(async (credentials) => {
       const lastColon = credentials.lastIndexOf(":");
       if (lastColon === -1) {
         throw new Error(
@@ -66,10 +66,7 @@ const getAuthConfig = async (
       const credentialsFilePath = credentials.substr(lastColon + 1);
 
       const credentialsLine = await pReadFile(credentialsFilePath);
-      const [username, password] = credentialsLine
-        .toString()
-        .trim()
-        .split(":");
+      const [username, password] = credentialsLine.toString().trim().split(":");
       if (!username || !password) {
         throw new Error(
           "Credential file must have the format `username:password'",
@@ -163,7 +160,7 @@ export const getConfigFromArgv = async (): Promise<Config> => {
   const { directory = process.cwd() } = rawConfig;
   const { credentials } = rawConfig;
   if (credentials) {
-    credentials.forEach(oneCredential => {
+    credentials.forEach((oneCredential) => {
       if (!isSubDirectory(directory, oneCredential)) {
         throw new Error(
           `${oneCredential} must be within the directory ${directory}`,

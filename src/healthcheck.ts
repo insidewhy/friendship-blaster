@@ -122,7 +122,7 @@ export function getVeryUnhealthyDockerContainers(
   }));
 
   return merge(initialContainerStatuses).pipe(
-    mergeMap(initialContainerStatus => {
+    mergeMap((initialContainerStatus) => {
       return interval(healthPollFrequency * MILISECS_IN_A_SECOND).pipe(
         switchScan((containerStatus: ContainerStatus) => {
           return promiseFactoryToObservable(

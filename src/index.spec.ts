@@ -270,7 +270,7 @@ describe("friendship-blaster", () => {
         // this pid will not be a descendent of fblasterProcess as it will be
         // executed via docker (except when `yarn test-dev` is used)
         const pid = await getMatchingProc(
-          args =>
+          (args) =>
             args.length > 1 &&
             /f(?:riendship-)?blaster\/(?:.*\/)?dist\/index.js$/.test(args[1]),
         );
@@ -279,7 +279,7 @@ describe("friendship-blaster", () => {
         // grab the docker-compose that fblaster spawned and kill it
         const dockerComposePid = await getMatchingDescendentProc(
           pid,
-          args => args.length > 1 && /docker-compose$/.test(args[1]),
+          (args) => args.length > 1 && /docker-compose$/.test(args[1]),
         );
         expect(dockerComposePid).not.toEqual(0);
 

@@ -47,7 +47,7 @@ export function assertTaggedImageList(
     throw new Error("Version file should contain a list");
   }
 
-  (thing as TaggedImages).forEach(dockerImage => {
+  (thing as TaggedImages).forEach((dockerImage) => {
     if (typeof dockerImage.image !== "string") {
       throw new Error("Version entry did not contain string image property");
     }
@@ -67,7 +67,7 @@ export async function loginToContainerRepositories(
   authConfig: AuthConfig,
 ): Promise<void> {
   await Promise.all(
-    Array.from(authConfig.keys()).map(async repoUrl => {
+    Array.from(authConfig.keys()).map(async (repoUrl) => {
       const repoAuth: RepoAuthConfig = authConfig.get(repoUrl)!;
       debugLog("Logging in to container registry", repoUrl);
       await runCommand([
@@ -100,7 +100,7 @@ export function assertDockerComposeConfig(
     throw new Error("Invalid docker-compose.yml: did not contain services");
   }
 
-  return Object.values(services).forEach(service => {
+  return Object.values(services).forEach((service) => {
     if (typeof service !== "object") {
       throw new Error("Invalid service found in docker-compose.yml");
     }
@@ -117,7 +117,7 @@ export function assertDockerComposeConfig(
  * The dockerode typings are terrible so we need to use `unknown`.
  */
 export const waitForDocker = (docker: Docker, stream: unknown): Promise<void> =>
-  new Promise(resolve => docker.modem.followProgress(stream, resolve));
+  new Promise((resolve) => docker.modem.followProgress(stream, resolve));
 
 /**
  * Returns a type of {} because dockerode typings are broken and also
@@ -145,7 +145,7 @@ export async function pullChangedImages(
 ): Promise<void> {
   const changedImages = newPollableImages.filter(({ repoUrl, image, tag }) => {
     const matchingPrev = prevImages.find(
-      prev => prev.repoUrl == repoUrl && prev.image === image,
+      (prev) => prev.repoUrl == repoUrl && prev.image === image,
     );
     return matchingPrev!.tag !== tag;
   });
@@ -154,7 +154,7 @@ export async function pullChangedImages(
 
   debugLog("Pull changed images: %O", changedImages);
   await Promise.all(
-    changedImages.map(async image => {
+    changedImages.map(async (image) => {
       // see https://github.com/Microsoft/TypeScript/issues/14080 for why it is
       // impossible to augment the type of Docker :(
       const pullStream = await docker.pull(

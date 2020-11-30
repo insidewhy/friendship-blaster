@@ -82,8 +82,8 @@ export const startTestContainerRegistry = async (
   const compareName = `/${REGISTRY_CONTAINER_NAME}`;
   do {
     const containers = await docker.listContainers();
-    const [registryContainer] = containers.filter(container =>
-      container.Names.some(name => name === compareName),
+    const [registryContainer] = containers.filter((container) =>
+      container.Names.some((name) => name === compareName),
     );
     if (registryContainer && /^Up/.test(registryContainer.Status)) {
       return;
@@ -191,10 +191,7 @@ export const pollFileForLines = async (
   }
 
   for (;;) {
-    const lines = (await pReadFile(filePath))
-      .toString()
-      .trim()
-      .split("\n");
+    const lines = (await pReadFile(filePath)).toString().trim().split("\n");
 
     if (exact) {
       if (lines.length === lineCount) {
@@ -265,7 +262,7 @@ export const getMatchingProc = async (
     .trim()
     .split("\n")
     .slice(1)
-    .map(line => {
+    .map((line) => {
       const [pidStr, ...args] = line.trim().split(/\s+/);
       return { pid: parseInt(pidStr), args };
     })
@@ -288,14 +285,14 @@ export const getMatchingDescendentProc = async (
     .trim()
     .split("\n")
     .slice(1)
-    .map(line => {
+    .map((line) => {
       const [pidStr, ppidStr, ...args] = line.trim().split(/\s+/);
       const pid = parseInt(pidStr);
       const ppid = parseInt(ppidStr);
       pidMap.set(pid, ppid);
       return { pid, args };
     })
-    .filter(pidInfo => {
+    .filter((pidInfo) => {
       if (!argMatcher(pidInfo.args)) {
         return false;
       }

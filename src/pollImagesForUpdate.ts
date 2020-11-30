@@ -41,7 +41,7 @@ function pollImageForUpdates(
 
   // curl -H "Accept: application/json" --user solas:password -L https://solas.azurecr.io/v2/solas-dns/tags/list\?n=9000
   return Axios.get(tagUrl, axiosOptions).pipe(
-    map(result => {
+    map((result) => {
       const tags: string[] = result.data?.tags ?? [];
       const spec = `^${pollableImage.tag}`;
       const nextTag = semver.maxSatisfying(tags, spec);
@@ -56,7 +56,7 @@ function pollImageForUpdates(
       };
     }),
     filter(isDefined),
-    catchError(error => {
+    catchError((error) => {
       // just log errors, don't want to bring the poll process down due to
       // a single HTTP failure
       console.warn(
@@ -78,7 +78,7 @@ function pollImagesForUpdate(
   auth?: AuthConfig,
 ): Observable<TaggedImages> {
   return merge(
-    ...initialPollableImages.map(initialPollableImage =>
+    ...initialPollableImages.map((initialPollableImage) =>
       interruptableInterval(pollFrequency * 1000).pipe(
         switchScan(
           pollImageForUpdates.bind(null, allowInsecureHttps, auth),
@@ -91,7 +91,7 @@ function pollImagesForUpdate(
     scan((pollableImages: TaggedImages, changedImage: TaggedImage) => {
       // filter out the corresponding entry then push the change
       const newImages = pollableImages.filter(
-        pollableImage =>
+        (pollableImage) =>
           pollableImage.repoUrl !== changedImage.repoUrl ||
           pollableImage.image !== changedImage.image,
       );

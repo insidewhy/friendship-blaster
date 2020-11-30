@@ -59,10 +59,10 @@ export const logErrorAndRetry = <T>(
   retryAfterSeconds: number,
 ): MonoTypeOperatorFunction<T> =>
   pipe(
-    tap(null, error => {
+    tap(null, (error) => {
       console.warn(logFormat, error);
     }),
-    retryWhen(e => e.pipe(delay(retryAfterSeconds))),
+    retryWhen((e) => e.pipe(delay(retryAfterSeconds))),
   );
 
 /**
@@ -70,7 +70,7 @@ export const logErrorAndRetry = <T>(
  * SIGUSR2.
  */
 export const observeSignalUSR2 = (): Observable<void> =>
-  new Observable(observer => {
+  new Observable((observer) => {
     process.on("SIGUSR2", () => {
       observer.next();
     });
@@ -86,5 +86,5 @@ export const interruptableInterval = (period: number): Observable<boolean> =>
     mapTo(merge(interval(period), of(-1))),
     startWith(interval(period)),
     switchAll(),
-    map(sequence => sequence < 0),
+    map((sequence) => sequence < 0),
   );

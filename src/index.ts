@@ -75,7 +75,7 @@ async function getPollableImages(
   pollSpec: ImageSet,
 ): Promise<TaggedImages> {
   const pollableImages = Object.values(dockerComposeConfig.services)
-    .map(service => {
+    .map((service) => {
       if (typeof service !== "object") {
         throw new Error(`Invalid service found in ${DOCKER_COMPOSE_YML}`);
       }
@@ -297,7 +297,7 @@ function mergePollableImagesWithDockerComposeConfig(
   dockerComposeConfig: DockerComposeConfig,
 ): DockerComposeConfig {
   const newConfig = { ...dockerComposeConfig };
-  newConfig.services = mapValues(newConfig.services, service => {
+  newConfig.services = mapValues(newConfig.services, (service) => {
     const [repoUrl, imageAndTag] = service.image.split("/");
     if (!repoUrl || !imageAndTag) {
       return service;
@@ -308,7 +308,7 @@ function mergePollableImagesWithDockerComposeConfig(
     }
 
     const matchingImage = pollableImages.find(
-      pollableImage =>
+      (pollableImage) =>
         pollableImage.image === image && pollableImage.repoUrl === repoUrl,
     );
 
@@ -427,9 +427,9 @@ async function getLatestPollableImages(
   );
   assertTaggedImageList(latestImages);
 
-  return pollableImages.map(pollableImage => {
+  return pollableImages.map((pollableImage) => {
     const matching = latestImages.find(
-      latestImage =>
+      (latestImage) =>
         latestImage.repoUrl === pollableImage.repoUrl &&
         latestImage.image === pollableImage.image,
     );
