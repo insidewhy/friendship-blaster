@@ -42,7 +42,7 @@
     "axios": "^0.21.0",
     "axios-observable": "^1.1.2",
     "debug": "^4.1.1",
-    "delay": "^4.3.0",
+    "delay": "^5.0.0",
     "dockerode": "^3.0.2",
     "lodash": "^4.17.15",
     "md5": "^2.2.1",
