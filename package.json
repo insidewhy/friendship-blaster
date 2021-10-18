@@ -55,7 +55,7 @@
     "friendship-blaster": "./bin/friendship-blaster"
   },
   "devDependencies": {
-    "@types/debug": "4.1.5",
+    "@types/debug": "4.1.7",
     "@types/delay": "3.1.0",
     "@types/dockerode": "3.2.1",
     "@types/jest": "26.0.15",
