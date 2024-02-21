@@ -39,7 +39,7 @@
     }
   },
   "dependencies": {
-    "axios": "^0.21.0",
+    "axios": "^0.28.0",
     "axios-observable": "^1.1.2",
     "debug": "^4.1.1",
     "delay": "^4.3.0",
