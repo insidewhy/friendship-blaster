@@ -562,12 +562,22 @@
   dependencies:
     delay "*"
 
-"@types/dockerode@3.2.1":
-  version "3.2.1"
-  resolved "https://registry.yarnpkg.com/@types/dockerode/-/dockerode-3.2.1.tgz#f713a8f6f1017c227845ab33239383da721207b9"
-  integrity sha512-AeZpdQMNqM8dtrEaaP81CbjdRVKNmFIMzgz5IlKIeS5uWEmjlEmENP444AGTEEF71r5TFuY9E4SkzZAO8lOF1A==
+"@types/docker-modem@*":
+  version "3.0.6"
+  resolved "https://registry.yarnpkg.com/@types/docker-modem/-/docker-modem-3.0.6.tgz#1f9262fcf85425b158ca725699a03eb23cddbf87"
+  integrity sha512-yKpAGEuKRSS8wwx0joknWxsmLha78wNMe9R2S3UNsVOkZded8UqOrV8KoeDXoXsjndxwyF3eIhyClGbO1SEhEg==
   dependencies:
     "@types/node" "*"
+    "@types/ssh2" "*"
+
+"@types/dockerode@3.3.31":
+  version "3.3.31"
+  resolved "https://registry.yarnpkg.com/@types/dockerode/-/dockerode-3.3.31.tgz#27a192c134651d85afc658e4d3e7a805b865989e"
+  integrity sha512-42R9eoVqJDSvVspV89g7RwRqfNExgievLNWoHkg7NoWIqAmavIbgQBb4oc0qRtHkxE+I3Xxvqv7qVXFABKPBTg==
+  dependencies:
+    "@types/docker-modem" "*"
+    "@types/node" "*"
+    "@types/ssh2" "*"
 
 "@types/glob@*":
   version "7.1.3"
@@ -638,6 +648,13 @@
   resolved "https://registry.yarnpkg.com/@types/node/-/node-14.14.10.tgz#5958a82e41863cfc71f2307b3748e3491ba03785"
   integrity sha512-J32dgx2hw8vXrSbu4ZlVhn1Nm3GbeCFNw2FWL8S5QKucHGY0cyNwjdQdO+KMBZ4wpmC7KhLCiNsdk1RFRIYUQQ==
 
+"@types/node@^18.11.18":
+  version "18.19.42"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-18.19.42.tgz#b54ed4752c85427906aab40917b0f7f3d724bf72"
+  integrity sha512-d2ZFc/3lnK2YCYhos8iaNIYu9Vfhr92nHiyJHRltXWjXUBjEE+A4I58Tdbnw4VhggSW+2j5y5gTrLs4biNnubg==
+  dependencies:
+    undici-types "~5.26.4"
+
 "@types/normalize-package-data@^2.4.0":
   version "2.4.0"
   resolved "https://registry.yarnpkg.com/@types/normalize-package-data/-/normalize-package-data-2.4.0.tgz#e486d0d97396d79beedd0a6e33f4534ff6b4973e"
@@ -665,6 +682,13 @@
   version "7.3.4"
   resolved "https://registry.yarnpkg.com/@types/semver/-/semver-7.3.4.tgz#43d7168fec6fa0988bb1a513a697b29296721afb"
   integrity sha512-+nVsLKlcUCeMzD2ufHEYuJ9a2ovstb6Dp52A5VsoKxDXgvE051XgHI/33I1EymwkRGQkwnA0LkhnUzituGs4EQ==
+
+"@types/ssh2@*":
+  version "1.15.0"
+  resolved "https://registry.yarnpkg.com/@types/ssh2/-/ssh2-1.15.0.tgz#ef698a2fe05696d898e0f9398384ad370cd35317"
+  integrity sha512-YcT8jP5F8NzWeevWvcyrrLB3zcneVjzYY9ZDSMAMboI+2zR1qYWFhwsyOFVzT7Jorn67vqxC0FRiw8YyG9P1ww==
+  dependencies:
+    "@types/node" "^18.11.18"
 
 "@types/stack-utils@^2.0.0":
   version "2.0.0"
@@ -4253,6 +4277,11 @@ typescript@4.1.2:
   version "4.1.2"
   resolved "https://registry.yarnpkg.com/typescript/-/typescript-4.1.2.tgz#6369ef22516fe5e10304aae5a5c4862db55380e9"
   integrity sha512-thGloWsGH3SOxv1SoY7QojKi0tc+8FnOmiarEGMbd/lar7QOEd3hvlx3Fp5y6FlDUGl9L+pd4n2e+oToGMmhRQ==
+
+undici-types@~5.26.4:
+  version "5.26.5"
+  resolved "https://registry.yarnpkg.com/undici-types/-/undici-types-5.26.5.tgz#bcd539893d00b56e964fd2657a4866b221a65617"
+  integrity sha512-JlCMO+ehdEIKqlFxk6IfVoAUVmgz7cU7zD/h9XZ0qzeosSHmUJVOzSQvvYSYWXkFXC+IfLKSIffhv0sVZup6pA==
 
 union-value@^1.0.0:
   version "1.0.1"
