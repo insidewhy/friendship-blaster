@@ -59,7 +59,7 @@
     "@types/delay": "3.1.0",
     "@types/dockerode": "3.2.1",
     "@types/jest": "26.0.15",
-    "@types/lodash": "4.14.165",
+    "@types/lodash": "4.17.12",
     "@types/md5": "2.2.1",
     "@types/node": "14.14.10",
     "@types/rimraf": "3.0.0",
